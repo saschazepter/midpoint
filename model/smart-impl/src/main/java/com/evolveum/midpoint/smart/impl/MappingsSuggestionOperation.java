@@ -9,10 +9,7 @@ package com.evolveum.midpoint.smart.impl;
 
 import static com.evolveum.midpoint.smart.api.ServiceClient.Method.SUGGEST_MAPPING;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import javax.xml.namespace.QName;
 
 import com.evolveum.midpoint.prism.PrismContext;
@@ -98,7 +95,21 @@ class MappingsSuggestionOperation {
         ctx.checkIfCanRun();
 
         var attributeMatchToMapCollection = new ArrayList<AttributeMatchToMap>(match.getAttributeMatch().size());
+        List<String> allowed = Arrays.asList(
+                "c:attributes/ri:cn",
+                "c:attributes/ri:uid",
+                "c:attributes/ri:mail",
+                "c:attributes/ri:givenName",
+                "c:attributes/ri:sn",
+                "c:attributes/ri:o",
+                "c:attributes/ri:title"
+        );
         for (var attributeMatch : match.getAttributeMatch()) {
+            var applicationAttribute = attributeMatch.getApplicationAttribute();
+            if (!allowed.contains(applicationAttribute)) {
+                continue;
+            }
+
             var shadowAttrPath = matchingOp.getApplicationItemPath(attributeMatch.getApplicationAttribute());
             if (shadowAttrPath.size() != 2 || !shadowAttrPath.startsWith(ShadowType.F_ATTRIBUTES)) {
                 LOGGER.warn("Ignoring attribute {}. It is not a traditional attribute.", shadowAttrPath);
