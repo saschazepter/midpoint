@@ -6,6 +6,8 @@
  */
 package com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.correlation;
 
+import com.evolveum.midpoint.gui.api.component.result.OpResult;
+import com.evolveum.midpoint.gui.api.model.LoadableModel;
 import com.evolveum.midpoint.gui.api.page.PageBase;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerValueWrapper;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerWrapper;
@@ -17,9 +19,14 @@ import com.evolveum.midpoint.gui.impl.page.admin.resource.ResourceDetailsModel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.AbstractResourceWizardBasicPanel;
 import com.evolveum.midpoint.gui.impl.component.wizard.WizardPanelHelper;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationWrapperUtils;
+import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.component.SmartAlertGeneratingPanel;
+import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.dto.SmartGeneratingAlertDto;
 import com.evolveum.midpoint.model.api.AssignmentObjectRelation;
 import com.evolveum.midpoint.prism.*;
 import com.evolveum.midpoint.prism.path.ItemPath;
+import com.evolveum.midpoint.schema.processor.ResourceObjectTypeIdentification;
+import com.evolveum.midpoint.schema.result.OperationResult;
+import com.evolveum.midpoint.smart.api.SmartIntegrationService;
 import com.evolveum.midpoint.smart.api.info.StatusInfo;
 import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.util.exception.*;
@@ -29,6 +36,7 @@ import com.evolveum.midpoint.web.application.PanelDisplay;
 import com.evolveum.midpoint.web.application.PanelInstance;
 import com.evolveum.midpoint.web.application.PanelType;
 import com.evolveum.midpoint.web.component.dialog.ConfigureSynchronizationConfirmationPanel;
+import com.evolveum.midpoint.web.component.dialog.SmartPermissionRecordDto;
 import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
@@ -43,7 +51,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.MappingUtils.createMappingsValueIfRequired;
-import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.collectRequiredResourceAttributeDefs;
+import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.*;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.removeCorrelationTypeSuggestionNew;
 import static com.evolveum.midpoint.web.session.UserProfileStorage.TableId.TABLE_SMART_CORRELATION;
 
@@ -58,9 +66,13 @@ import static com.evolveum.midpoint.web.session.UserProfileStorage.TableId.TABLE
 public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceWizardBasicPanel<CorrelationDefinitionType> {
 
     private static final Trace LOGGER = TraceManager.getTrace(CorrelationItemsTableWizardPanel.class);
+    private static final String CLASS_DOT = CorrelationItemsTableWizardPanel.class.getName() + ".";
+    private static final String OP_SUGGEST_CORRELATION_RULES = CLASS_DOT + "suggestCorrelationRules";
 
     private static final String ID_NOT_SHOWN_CONTAINER_INFO = "notShownContainerInfo";
     private static final String PANEL_TYPE = "rw-correlationRules";
+
+    private static final String ID_AI_PANEL = "aiPanel";
     private static final String ID_TABLE = "table";
 
     public CorrelationItemsTableWizardPanel(
@@ -81,8 +93,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
         ResourceType resource = detailsModel.getObjectType();
         String resourceOid = resource.getOid();
 
-        SmartCorrelationTable table = createCorrelationTable(resourceOid);
-        add(table);
+        initCorrelationPanel(resourceOid);
 
         Label info = new Label(
                 ID_NOT_SHOWN_CONTAINER_INFO,
@@ -92,18 +103,46 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
         add(info);
     }
 
-    private @NotNull SmartCorrelationTable createCorrelationTable(String resourceOid) {
+    private void initCorrelationPanel(String resourceOid) {
+        IModel<Boolean> switchToggleModel = Model.of(Boolean.TRUE);
+        if (isNotCompletedSuggestion(loadExistingSuggestion(resourceOid).getObject())) {
+            switchToggleModel.setObject(Boolean.FALSE);
+        }
+
+        SmartAlertGeneratingPanel aiPanel = createSmartAlertGeneratingPanel(resourceOid, switchToggleModel);
+        add(aiPanel);
+
+        SmartCorrelationTable table = createSmartCorrelationTable(resourceOid, switchToggleModel);
+        add(table);
+    }
+
+    protected LoadableModel<StatusInfo<?>> loadExistingSuggestion(String resourceOid) {
+        Task task = getPageBase().createSimpleTask("Load generation statusInfo");
+        OperationResult result = task.getResult();
+        return new LoadableModel<>() {
+            @Override
+            protected StatusInfo<CorrelationSuggestionsType> load() {
+                return loadCorrelationTypeSuggestion(getPageBase(), resourceOid, task, result);
+            }
+        };
+    }
+
+    private @NotNull SmartCorrelationTable createSmartCorrelationTable(String resourceOid, IModel<Boolean> switchToggleModel) {
         SmartCorrelationTable table = new SmartCorrelationTable(
                 ID_TABLE,
                 TABLE_SMART_CORRELATION,
                 Model.of(ViewToggle.TILE),
+                switchToggleModel,
                 getValueModel(),
                 resourceOid) {
 
             @Override
             public void refreshAndDetach(AjaxRequestTarget target) {
                 super.refreshAndDetach(target);
-                target.add(CorrelationItemsTableWizardPanel.this);
+
+                if (getFeedback().hasErrorMessage()) {
+                    target.add(CorrelationItemsTableWizardPanel.this);
+                }
             }
 
             @Override
@@ -162,7 +201,8 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                     AssignmentObjectRelation relationSpec,
                     boolean isDuplicate,
                     StatusInfo<?> statusInfo) {
-                PrismContainerValueWrapper<ItemsSubCorrelatorType> newValue = createNewItemsSubCorrelatorValue(getPageBase(), value, target);
+                PrismContainerValueWrapper<ItemsSubCorrelatorType> newValue = createNewItemsSubCorrelatorValue(
+                        getPageBase(), value, target);
                 showTableForItemRefs(target, this::findResourceObjectTypeDefinition,
                         () -> newValue, (StatusInfo<CorrelationSuggestionsType>) statusInfo);
             }
@@ -170,6 +210,51 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
 
         table.setOutputMarkupId(true);
         return table;
+    }
+
+    private @NotNull SmartAlertGeneratingPanel createSmartAlertGeneratingPanel(
+            String resourceOid,
+            IModel<Boolean> switchToggleModel) {
+        SmartAlertGeneratingPanel aiPanel = new SmartAlertGeneratingPanel(ID_AI_PANEL,
+                () -> new SmartGeneratingAlertDto(loadExistingSuggestion(resourceOid), switchToggleModel, getPageBase())) {
+            @Override
+            protected void performSuggestOperation(AjaxRequestTarget target) {
+                switchToggleModel.setObject(false);
+                ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();
+                SmartIntegrationService service = getPageBase().getSmartIntegrationService();
+                getPageBase().taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
+                        .withOpResultOptions(OpResult.Options.create()
+                                .withHideSuccess(true)
+                                .withHideInProgress(true))
+                        .runVoid((task, result) -> service
+                                .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, task, result));
+            }
+
+            @Override
+            protected @NotNull IModel<SmartPermissionRecordDto> getPermissionRecordDtoIModel() {
+                return () -> new SmartPermissionRecordDto(null,
+                        SmartPermissionRecordDto.initDummyCorrelationPermissionData());
+            }
+
+            @Override
+            protected void refreshAssociatedComponents(@NotNull AjaxRequestTarget target) {
+                SmartCorrelationTable smartMappingTable = getTable();
+                smartMappingTable.refreshAndDetach(target);
+            }
+        };
+
+        aiPanel.setOutputMarkupId(true);
+        return aiPanel;
+    }
+
+    protected ResourceObjectTypeIdentification getResourceObjectTypeIdentification() {
+        var valueWrapper = getValueModel().getObject();
+        var parentContainerValue = valueWrapper.getParentContainerValue(ResourceObjectTypeDefinitionType.class);
+        if (parentContainerValue == null || parentContainerValue.getRealValue() == null) {
+            return null;
+        }
+        ResourceObjectTypeDefinitionType resourceObjectTypeDef = parentContainerValue.getRealValue();
+        return ResourceObjectTypeIdentification.of(resourceObjectTypeDef.getKind(), resourceObjectTypeDef.getIntent());
     }
 
     protected void acceptSuggestionItemPerformed(PageBase pageBase, AjaxRequestTarget target,
