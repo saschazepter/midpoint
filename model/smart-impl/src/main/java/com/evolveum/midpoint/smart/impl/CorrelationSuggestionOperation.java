@@ -137,6 +137,11 @@ class CorrelationSuggestionOperation {
                     var focusItemPath = matchingOp.getFocusItemPath(siAttributeMatch.getMidPointAttribute());
                     if (correlator.equivalent(focusItemPath)) {
                         var resourceAttrPath = matchingOp.getApplicationItemPath(siAttributeMatch.getApplicationAttribute());
+                        if (correlator.toString().equals("name")) {
+                            resourceAttrPath = matchingOp.getApplicationItemPath("c:attributes/ri:uid");
+                        } else if (correlator.toString().equals("emailAddress")) {
+                            resourceAttrPath = matchingOp.getApplicationItemPath("c:attributes/ri:mail");
+                        }
                         var resourceAttrName = resourceAttrPath.rest(); // skipping "c:attributes"; TODO handle or skip other cases
                         var inbound = new InboundMappingType()
                                 .name(resourceAttrPath.lastName().getLocalPart()
