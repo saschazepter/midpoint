@@ -14,7 +14,6 @@ import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerWrapper;
 import com.evolveum.midpoint.gui.api.util.MappingDirection;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.MappingUtils;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.dto.StatusRowRecord;
-import com.evolveum.midpoint.prism.Containerable;
 import com.evolveum.midpoint.prism.PrismContainer;
 import com.evolveum.midpoint.prism.PrismPropertyDefinition;
 import com.evolveum.midpoint.prism.path.ItemPath;
@@ -55,10 +54,7 @@ public class SmartIntegrationStatusInfoUtils {
 
     private static final Trace LOGGER = TraceManager.getTrace(SmartIntegrationStatusInfoUtils.class);
 
-    public record SuggestionProviderResult<C extends Containerable, T>(
-            @NotNull List<PrismContainerValueWrapper<C>> wrappers,
-            @NotNull Map<PrismContainerValueWrapper<C>, StatusInfo<T>> suggestionByWrapper) {
-    }
+    /*OBJECT_TYPE_SUGGESTIONS*/
 
     /**
      * Loads the current status of a resource, initializing it via smart integration services.
@@ -124,8 +120,7 @@ public class SmartIntegrationStatusInfoUtils {
         }
 
         List<StatusInfo<ObjectTypesSuggestionType>> suggestionsPerObjectClass = statuses.stream()
-                .filter(s -> s.getObjectClassName() != null
-                        && s.getObjectClassName().equals(objectClassName))
+                .filter(s -> s.getObjectClassName() != null && s.getObjectClassName().equals(objectClassName))
                 .toList();
 
         return findLatestSuggestion(suggestionsPerObjectClass);
@@ -144,7 +139,9 @@ public class SmartIntegrationStatusInfoUtils {
                 .orElse(null);
     }
 
-    public static @Nullable List<StatusInfo<CorrelationSuggestionsType>> loadCorrelationTypeSuggestions(
+    /*CORRELATION_TYPE_SUGGESTIONS*/
+
+    public static List<StatusInfo<CorrelationSuggestionsType>> loadCorrelationTypeSuggestions(
             @NotNull PageBase pageBase,
             @NotNull String resourceOid,
             @NotNull Task task,
@@ -162,7 +159,13 @@ public class SmartIntegrationStatusInfoUtils {
         }
     }
 
-    public static @NotNull SuggestionProviderResult<ItemsSubCorrelatorType, CorrelationSuggestionsType> loadCorrelationSuggestionWrappers(
+    public record CorrelationSuggestionProviderResult(
+            @NotNull List<PrismContainerValueWrapper<ItemsSubCorrelatorType>> wrappers,
+            @NotNull Map<PrismContainerValueWrapper<ItemsSubCorrelatorType>, StatusInfo<CorrelationSuggestionsType>> suggestionByWrapper) {
+
+    }
+
+    public static @NotNull CorrelationSuggestionProviderResult loadCorrelationSuggestionWrappers(
             @NotNull PageBase pageBase,
             @NotNull String resourceOid,
             @NotNull ResourceObjectTypeDefinitionType rotDef,
@@ -177,7 +180,7 @@ public class SmartIntegrationStatusInfoUtils {
             List<StatusInfo<CorrelationSuggestionsType>> statuses =
                     loadCorrelationTypeSuggestions(pageBase, resourceOid, task, result);
             if (statuses == null || statuses.isEmpty()) {
-                return new SuggestionProviderResult<>(Collections.emptyList(), byWrapper);
+                return new CorrelationSuggestionProviderResult(Collections.emptyList(), byWrapper);
             }
 
             for (StatusInfo<CorrelationSuggestionsType> suggestionStatusInfo : statuses) {
@@ -228,7 +231,7 @@ public class SmartIntegrationStatusInfoUtils {
                     }
                 }
             }
-            return new SuggestionProviderResult<>(wrappers, byWrapper);
+            return new CorrelationSuggestionProviderResult(wrappers, byWrapper);
 
         } catch (SchemaException e) {
             throw new IllegalStateException("Failed to wrap correlation suggestions", e);
@@ -237,7 +240,7 @@ public class SmartIntegrationStatusInfoUtils {
         }
     }
 
-    public static @Nullable List<StatusInfo<MappingsSuggestionType>> loadMappingTypeSuggestions(
+    public static List<StatusInfo<MappingsSuggestionType>> loadMappingTypeSuggestions(
             @NotNull PageBase pageBase,
             @NotNull String resourceOid,
             @NotNull Task task,
@@ -308,7 +311,13 @@ public class SmartIntegrationStatusInfoUtils {
         }
     }
 
-    public static @NotNull SuggestionProviderResult<MappingType, MappingsSuggestionType> loadMappingSuggestionWrappers(
+    public record MappingSuggestionProviderResult(
+            @NotNull List<PrismContainerValueWrapper<MappingType>> wrappers,
+            @NotNull Map<PrismContainerValueWrapper<MappingType>, StatusInfo<MappingsSuggestionType>> suggestionByWrapper) {
+
+    }
+
+    public static @NotNull MappingSuggestionProviderResult loadMappingSuggestionWrappers(
             @NotNull PageBase pageBase,
             @NotNull String resourceOid,
             @NotNull ResourceObjectTypeDefinitionType rotDef,
@@ -324,7 +333,7 @@ public class SmartIntegrationStatusInfoUtils {
             List<StatusInfo<MappingsSuggestionType>> statuses =
                     loadMappingTypeSuggestions(pageBase, resourceOid, task, result);
             if (statuses == null || statuses.isEmpty()) {
-                return new SuggestionProviderResult<>(Collections.emptyList(), byWrapper);
+                return new MappingSuggestionProviderResult(Collections.emptyList(), byWrapper);
             }
 
             for (StatusInfo<MappingsSuggestionType> suggestionStatusInfo : statuses) {
@@ -389,7 +398,7 @@ public class SmartIntegrationStatusInfoUtils {
                 }
             }
 
-            return new SuggestionProviderResult<>(wrappers, byWrapper);
+            return new MappingSuggestionProviderResult(wrappers, byWrapper);
 
         } catch (SchemaException e) {
             throw new IllegalStateException("Failed to wrap mapping suggestions", e);
@@ -596,8 +605,14 @@ public class SmartIntegrationStatusInfoUtils {
                 .collect(Collectors.toSet());
     }
 
+    public record ObjectTypeSuggestionProviderResult(
+            @NotNull List<PrismContainerValueWrapper<ResourceObjectTypeDefinitionType>> wrappers,
+            @NotNull Map<PrismContainerValueWrapper<ResourceObjectTypeDefinitionType>, StatusInfo<ObjectTypesSuggestionType>> suggestionByWrapper) {
+
+    }
+
     /** Creates value wrappers for each suggested object type. */
-    public static @NotNull SuggestionProviderResult<ResourceObjectTypeDefinitionType, ObjectTypesSuggestionType> loadObjectTypeSuggestionWrappers(
+    public static @NotNull ObjectTypeSuggestionProviderResult loadObjectTypeSuggestionWrappers(
             PageBase pageBase,
             String resourceOid,
             Task task,
@@ -607,7 +622,7 @@ public class SmartIntegrationStatusInfoUtils {
         final List<StatusInfo<ObjectTypesSuggestionType>> suggestions = loadObjectTypeSuggestions(
                 pageBase, resourceOid, task, result);
         if (suggestions == null || suggestions.isEmpty()) {
-            return new SuggestionProviderResult<>(Collections.emptyList(), suggestionByWrapper);
+            return new ObjectTypeSuggestionProviderResult(Collections.emptyList(), suggestionByWrapper);
         }
 
         final List<PrismContainerValueWrapper<ResourceObjectTypeDefinitionType>> wrappers = new ArrayList<>();
@@ -640,11 +655,17 @@ public class SmartIntegrationStatusInfoUtils {
             }
         });
 
-        return new SuggestionProviderResult<>(wrappers, suggestionByWrapper);
+        return new ObjectTypeSuggestionProviderResult(wrappers, suggestionByWrapper);
+    }
+
+    public record AssociationTypeSuggestionProviderResult(
+            @NotNull List<PrismContainerValueWrapper<ShadowAssociationTypeDefinitionType>> wrappers,
+            @NotNull Map<PrismContainerValueWrapper<ShadowAssociationTypeDefinitionType>, StatusInfo<AssociationsSuggestionType>> suggestionByWrapper) {
+
     }
 
     /** Creates value wrappers for each suggested association type. */
-    public static @NotNull SuggestionProviderResult<ShadowAssociationTypeDefinitionType, AssociationsSuggestionType> loadAssociationTypeSuggestionWrappers(
+    public static @NotNull AssociationTypeSuggestionProviderResult loadAssociationTypeSuggestionWrappers(
             PageBase pageBase,
             String resourceOid,
             Task task,
@@ -654,7 +675,7 @@ public class SmartIntegrationStatusInfoUtils {
         final @Nullable List<StatusInfo<AssociationsSuggestionType>> suggestions = loadAssociationSuggestions(
                 pageBase, resourceOid, task, result);
         if (suggestions == null || suggestions.isEmpty()) {
-            return new SuggestionProviderResult<>(Collections.emptyList(), suggestionByWrapper);
+            return new AssociationTypeSuggestionProviderResult(Collections.emptyList(), suggestionByWrapper);
         }
 
         final List<PrismContainerValueWrapper<ShadowAssociationTypeDefinitionType>> wrappers = new ArrayList<>();
@@ -703,7 +724,7 @@ public class SmartIntegrationStatusInfoUtils {
             }
         });
 
-        return new SuggestionProviderResult<>(wrappers, suggestionByWrapper);
+        return new AssociationTypeSuggestionProviderResult(wrappers, suggestionByWrapper);
     }
 
     /** Builds display rows depending on the suggestion status. */
