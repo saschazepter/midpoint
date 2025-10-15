@@ -10,7 +10,7 @@ import com.evolveum.midpoint.gui.api.component.wizard.WizardStep;
 import com.evolveum.midpoint.gui.api.model.LoadableModel;
 import com.evolveum.midpoint.gui.impl.component.wizard.AbstractWizardStepPanel;
 import com.evolveum.midpoint.gui.impl.component.wizard.WizardPanelHelper;
-import com.evolveum.midpoint.gui.impl.component.wizard.connectorgenerator.WizardModelWithParentSteps;
+import com.evolveum.midpoint.gui.impl.component.wizard.withnavigation.WizardModelWithParentSteps;
 import com.evolveum.midpoint.gui.impl.page.admin.connector.development.ConnectorDevelopmentDetailsModel;
 import com.evolveum.midpoint.prism.Containerable;
 import com.evolveum.midpoint.schema.result.OperationResult;
@@ -112,12 +112,13 @@ public abstract class ScriptConnectorStepPanel extends AbstractWizardStepPanel<C
         getSubmit().add(AttributeAppender.replace("class", "btn btn-primary"));
 
         SimpleAceEditorPanel editorPanel = new SimpleAceEditorPanel(
-                ID_PANEL, new PropertyModel<>(valueModel, ConnDevArtifactType.F_CONTENT.getLocalPart()), 450) {
+                ID_PANEL, new PropertyModel<>(valueModel, ConnDevArtifactType.F_CONTENT.getLocalPart()), 400) {
 
             protected AceEditor createEditor(String id, IModel<String> model, int minSize) {
                 AceEditor editor = new AceEditor(id, model);
                 editor.setReadonly(false);
                 editor.setMinHeight(minSize);
+                editor.setHeight(400);
                 editor.setResizeToMaxHeight(false);
                 editor.setMode(AceEditor.Mode.GROOVY);
                 add(editor);
