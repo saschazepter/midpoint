@@ -332,7 +332,10 @@ public class TestSmartIntegrationService extends AbstractEmptyModelIntegrationTe
                                     .midPointAttribute(asStringSimple(UserType.F_NAME)))
                             .attributeMatch(new SiAttributeMatchSuggestionType()
                                     .applicationAttribute(asStringSimple(DummyBasicScenario.Account.AttributeNames.PERSONAL_NUMBER.path()))
-                                    .midPointAttribute(asStringSimple(UserType.F_PERSONAL_NUMBER))),
+                                    .midPointAttribute(asStringSimple(UserType.F_PERSONAL_NUMBER)))
+                            .attributeMatch(new SiAttributeMatchSuggestionType()
+                                    .applicationAttribute(asStringSimple(DummyBasicScenario.Account.AttributeNames.FULLNAME.path()))
+                                    .midPointAttribute(asStringSimple(UserType.F_FULL_NAME))),
                     new SiSuggestMappingResponseType().transformationScript(null),
                     new SiSuggestMappingResponseType().transformationScript(null))); // TODO other matches
         }

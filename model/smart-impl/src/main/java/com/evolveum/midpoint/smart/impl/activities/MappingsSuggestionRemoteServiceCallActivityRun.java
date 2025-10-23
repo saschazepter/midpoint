@@ -16,6 +16,7 @@ import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.GenericObjectType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.MappingsSuggestionWorkStateType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.OwnedShadowsType;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -46,17 +47,23 @@ public class MappingsSuggestionRemoteServiceCallActivityRun extends LocalActivit
         var schemaMatchOid = MiscUtil.stateNonNull(Referencable.getOid(parentState.getWorkStateReferenceRealValue(
                         MappingsSuggestionWorkStateType.F_SCHEMA_MATCH_REF)),
                 "Schema match object reference is not set in the work state in %s", task);
+        // Owned shadows are stored inline as a container in work state, not as a reference
+        var ownedShadows = parentState.getWorkStateItemRealValueClone(
+                MappingsSuggestionWorkStateType.F_OWNED_SHADOWS, OwnedShadowsType.class);
 
-        LOGGER.debug("Going to suggest mappings for resource {}, kind {} and intent {}; statistics in: {}; schema match in: {}",
-                resourceOid, kind, intent, statisticsOid, schemaMatchOid);
+        LOGGER.debug("Going to suggest mappings for resource {}, kind {} and intent {}; statistics in: {}; schema match in: {}; owned shadows count: {}",
+                resourceOid, kind, intent, statisticsOid, schemaMatchOid,
+                ownedShadows != null && ownedShadows.getOwnedShadow() != null ? ownedShadows.getOwnedShadow().size() : 0);
 
         var statistics = ShadowObjectTypeStatisticsTypeUtil.getObjectTypeStatisticsRequired(
                 getBeans().repositoryService.getObject(GenericObjectType.class, statisticsOid, null, result));
         var schemaMatch = ShadowObjectTypeStatisticsTypeUtil.getObjectTypeSchemaMatchRequired(
                 getBeans().repositoryService.getObject(GenericObjectType.class, schemaMatchOid, null, result));
 
+
         var suggestedMappings = SmartIntegrationBeans.get().smartIntegrationService.suggestMappings(
-                resourceOid, typeDef, statistics, schemaMatch, null, null, state, task, result);
+                resourceOid, typeDef, statistics, schemaMatch, ownedShadows,
+                null, null, state, task, result);
 
         parentState.setWorkStateItemRealValues(MappingsSuggestionWorkStateType.F_RESULT, suggestedMappings);
         parentState.flushPendingTaskModifications(result);

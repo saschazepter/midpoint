@@ -10569,6 +10569,13 @@
                             </xsd:appinfo>
                         </xsd:annotation>
                     </xsd:element>
+                    <xsd:element name="ownedShadows" type="tns:OwnedShadowsType" minOccurs="0">
+                        <xsd:annotation>
+                            <xsd:documentation>
+                                Sampled shadows with their owners used to suggest mappings.
+                            </xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
                     <xsd:element name="result" type="tns:MappingsSuggestionType" minOccurs="0">
                         <xsd:annotation>
                             <xsd:documentation>

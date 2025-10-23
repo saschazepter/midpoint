@@ -17,6 +17,7 @@ import javax.xml.namespace.QName;
 
 import com.evolveum.midpoint.prism.PrismPropertyDefinition;
 
+import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.util.ObjectTypeUtil;
 import com.evolveum.midpoint.schema.util.ShadowObjectTypeStatisticsTypeUtil;
 import com.evolveum.midpoint.util.DOMUtil;
@@ -157,6 +158,47 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
         } finally {
             result.close();
         }
+    }
+
+    @Override
+    public OwnedShadowsType sampleOwnedShadows(
+            String resourceOid,
+            ResourceObjectTypeIdentification typeIdentification,
+            int maxSamples,
+            Task task,
+            OperationResult result)
+            throws SchemaException, ConfigurationException, ExpressionEvaluationException, CommunicationException,
+            SecurityViolationException, ObjectNotFoundException {
+        // Maybe we should search the repository instead. The argument for going to the resource is to get some data even
+        // if they are not in the repository yet. But this is not a good argument, because if we get an account from the resource,
+        // it won't have the owner anyway.
+        var resource = modelService
+                .getObject(ResourceType.class, resourceOid, null, task, result)
+                .asObjectable();
+
+        var refs = new ArrayList<OwnedShadowRefType>(maxSamples);
+        modelService.searchObjectsIterative(
+                ShadowType.class,
+                Resource.of(resource)
+                        .queryFor(typeIdentification)
+                        .build(),
+                (object, lResult) -> {
+                    try {
+                        var owner = modelService.searchShadowOwner(object.getOid(), null, task, lResult);
+                        if (owner != null) {
+                            refs.add(new OwnedShadowRefType()
+                                    .shadowRef(ObjectTypeUtil.createObjectRef(object.getOid(), ObjectTypes.SHADOW))
+                                    .ownerRef(ObjectTypeUtil.createObjectRef(owner.getOid(), ObjectTypes.FOCUS_TYPE)));
+                        }
+                    } catch (Exception e) {
+                        LOGGER.trace("Couldn't fetch owner for {}", object);
+                    }
+                    return refs.size() < maxSamples;
+                },
+                null, task, result);
+        var container = new OwnedShadowsType();
+        container.getOwnedShadow().addAll(refs);
+        return container;
     }
 
     private QName getTypeName(@NotNull PrismPropertyDefinition<?> propertyDefinition) {
@@ -713,6 +755,7 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
             ResourceObjectTypeIdentification typeIdentification,
             ShadowObjectClassStatisticsType statistics,
             SchemaMatchResultType schemaMatch,
+            OwnedShadowsType ownedShadows,
             @Nullable MappingsSuggestionFiltersType filters,
             @Nullable MappingsSuggestionInteractionMetadataType interactionMetadata,
             @Nullable CurrentActivityState<?> activityState,
@@ -727,7 +770,7 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
                 .build();
         try (var serviceClient = this.clientFactory.getServiceClient(result)) {
             var mappings = this.mappingSuggestionOperationFactory.create(serviceClient, resourceOid,
-                    typeIdentification, activityState, task, result).suggestMappings(result, statistics, schemaMatch);
+                    typeIdentification, activityState, task, result).suggestMappings(result, statistics, schemaMatch, ownedShadows);
             LOGGER.debug("Suggested mappings:\n{}", mappings.debugDumpLazily(1));
             return mappings;
         } catch (Throwable t) {

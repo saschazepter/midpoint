@@ -11,12 +11,12 @@ import static com.evolveum.midpoint.smart.api.ServiceClient.Method.SUGGEST_MAPPI
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
 
 import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.repo.common.expression.ExpressionUtil;
 
+import com.evolveum.midpoint.smart.impl.mappings.OwnedShadow;
 import com.evolveum.midpoint.smart.impl.mappings.ValuesPair;
 import com.evolveum.midpoint.smart.impl.scoring.MappingsQualityAssessor;
 import com.evolveum.midpoint.util.MiscUtil;
@@ -30,7 +30,6 @@ import com.evolveum.midpoint.repo.common.activity.run.state.CurrentActivityState
 import com.evolveum.midpoint.schema.processor.ResourceObjectTypeIdentification;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.AiUtil;
-import com.evolveum.midpoint.schema.util.Resource;
 import com.evolveum.midpoint.smart.api.ServiceClient;
 import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.util.exception.*;
@@ -46,10 +45,6 @@ class MappingsSuggestionOperation {
 
     private static final Trace LOGGER = TraceManager.getTrace(MappingsSuggestionOperation.class);
 
-    private static final int ATTRIBUTE_MAPPING_EXAMPLES = 20;
-
-    private static final String ID_SCHEMA_MATCHING = "schemaMatching";
-    private static final String ID_SHADOWS_COLLECTION = "shadowsCollection";
     private static final String ID_MAPPINGS_SUGGESTION = "mappingsSuggestion";
     private final TypeOperationContext ctx;
     private final MappingsQualityAssessor qualityAssessor;
@@ -74,9 +69,12 @@ class MappingsSuggestionOperation {
                 qualityAssessor);
     }
 
-    MappingsSuggestionType suggestMappings(OperationResult result, ShadowObjectClassStatisticsType statistics, SchemaMatchResultType schemaMatch)
-            throws SchemaException, ExpressionEvaluationException, CommunicationException, SecurityViolationException,
-            ConfigurationException, ObjectNotFoundException, ObjectAlreadyExistsException, ActivityInterruptedException {
+    MappingsSuggestionType suggestMappings(
+            OperationResult result,
+            ShadowObjectClassStatisticsType statistics,
+            SchemaMatchResultType schemaMatch,
+            OwnedShadowsType ownedShadows)
+            throws SchemaException, ObjectNotFoundException, ObjectAlreadyExistsException, ActivityInterruptedException {
         ctx.checkIfCanRun();
 
         if (schemaMatch.getSchemaMatchResult().isEmpty()) {
@@ -84,35 +82,34 @@ class MappingsSuggestionOperation {
             return new MappingsSuggestionType();
         }
 
-        var shadowsCollectionState = ctx.stateHolderFactory.create(ID_SHADOWS_COLLECTION, result);
-        shadowsCollectionState.setExpectedProgress(ATTRIBUTE_MAPPING_EXAMPLES);
-        shadowsCollectionState.flush(result); // because finding an owned shadow can take a while
-        Collection<OwnedShadow> ownedShadows;
-        try {
-            ownedShadows = fetchOwnedShadows(shadowsCollectionState, result);
-        } catch (Throwable t) {
-            shadowsCollectionState.recordException(t);
-            throw t;
-        } finally {
-            shadowsCollectionState.close(result);
-        }
-
-        ctx.checkIfCanRun();
-
         var mappingsSuggestionState = ctx.stateHolderFactory.create(ID_MAPPINGS_SUGGESTION, result);
         mappingsSuggestionState.setExpectedProgress(schemaMatch.getSchemaMatchResult().size());
         try {
             var suggestion = new MappingsSuggestionType();
+            Collection<OwnedShadow> fetchedOwnedShadows;
+            try {
+                fetchedOwnedShadows = ValuesPair.preloadOwnedShadows(
+                        ownedShadows,
+                        ctx.b.modelService,
+                        ctx.getFocusClass(),
+                        ctx.task,
+                        result);
+            } catch (Throwable t) {
+                LoggingUtils.logException(LOGGER, "Couldn't preload owned objects; proceeding without examples", t);
+                fetchedOwnedShadows = java.util.List.of();
+            }
             for (SchemaMatchOneResultType matchPair : schemaMatch.getSchemaMatchResult()) {
                 var op = mappingsSuggestionState.recordProcessingStart(matchPair.getShadowAttribute().getName());
                 mappingsSuggestionState.flush(result);
-                var pairs = getValuesPairs(matchPair, ownedShadows);
+                var focusPropPath = PrismContext.get().itemPathParser().asItemPath(matchPair.getFocusPropertyPath());
+                var shadowAttrPath = PrismContext.get().itemPathParser().asItemPath(matchPair.getShadowAttributePath());
                 try {
-                    suggestion.getAttributeMappings().add(
-                            suggestMapping(
-                                    matchPair,
-                                    pairs,
-                                    result));
+                    Collection<ValuesPair> pairs = ValuesPair.buildFromPreloaded(
+                            fetchedOwnedShadows,
+                            shadowAttrPath,
+                            focusPropPath);
+                    var mapping = suggestMapping(matchPair, pairs, result);
+                    suggestion.getAttributeMappings().add(mapping);
                     mappingsSuggestionState.recordProcessingEnd(op, ItemProcessingOutcomeType.SUCCESS);
                 } catch (Throwable t) {
                     // TODO Shouldn't we create an unfinished mapping with just error info?
@@ -133,58 +130,6 @@ class MappingsSuggestionOperation {
         } finally {
             mappingsSuggestionState.close(result);
         }
-    }
-
-    private Collection<ValuesPair> getValuesPairs(SchemaMatchOneResultType m, Collection<OwnedShadow> ownedShadows) {
-        return extractPairs(
-                ownedShadows,
-                PrismContext.get().itemPathParser().asItemPath(m.getShadowAttributePath()),
-                PrismContext.get().itemPathParser().asItemPath(m.getFocusPropertyPath()));
-    }
-
-    private Collection<ValuesPair> extractPairs(
-            Collection<OwnedShadow> ownedShadows, ItemPath shadowAttrPath, ItemPath focusPropPath) {
-        return ownedShadows.stream()
-                .map(ownedShadow -> new ValuesPair(
-                        getItemRealValues(ownedShadow.shadow, shadowAttrPath),
-                        getItemRealValues(ownedShadow.owner, focusPropPath)))
-                .toList();
-    }
-
-    private Collection<?> getItemRealValues(ObjectType objectable, ItemPath itemPath) {
-        var item = objectable.asPrismObject().findItem(itemPath);
-        return item != null ? item.getRealValues() : List.of();
-    }
-
-    private Collection<OwnedShadow> fetchOwnedShadows(OperationContext.StateHolder state, OperationResult result)
-            throws SchemaException, ConfigurationException, ExpressionEvaluationException, CommunicationException,
-            SecurityViolationException, ObjectNotFoundException {
-        // Maybe we should search the repository instead. The argument for going to the resource is to get some data even
-        // if they are not in the repository yet. But this is not a good argument, because if we get an account from the resource,
-        // it won't have the owner anyway.
-        var ownedShadows = new ArrayList<OwnedShadow>(ATTRIBUTE_MAPPING_EXAMPLES);
-        ctx.b.modelService.searchObjectsIterative(
-                ShadowType.class,
-                Resource.of(ctx.resource)
-                        .queryFor(ctx.typeDefinition.getTypeIdentification())
-                        .build(),
-                (object, lResult) -> {
-                    try {
-                        var owner = ctx.b.modelService.searchShadowOwner(object.getOid(), null, ctx.task, lResult);
-                        if (owner != null) {
-                            ownedShadows.add(new OwnedShadow(object.asObjectable(), owner.asObjectable()));
-                            state.incrementProgress(result);
-                        }
-                    } catch (Exception e) {
-                        LoggingUtils.logException(LOGGER, "Couldn't fetch owner for {}", e, object);
-                    }
-                    return ctx.canRun() && ownedShadows.size() < ATTRIBUTE_MAPPING_EXAMPLES;
-                },
-                null, ctx.task, result);
-        return ownedShadows;
-    }
-
-    private record OwnedShadow(ShadowType shadow, FocusType owner) {
     }
 
     private AttributeMappingsSuggestionType suggestMapping(

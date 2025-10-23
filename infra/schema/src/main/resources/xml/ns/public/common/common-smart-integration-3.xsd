@@ -1383,4 +1383,49 @@
             </xsd:element>
         </xsd:sequence>
     </xsd:complexType>
+
+    <!-- Owned shadow + owner pair used while suggesting mappings -->
+    <xsd:complexType name="OwnedShadowRefType">
+        <xsd:annotation>
+            <xsd:documentation>
+                A pair of references: a shadow and its owner focus. Used as sampled data for mapping suggestions.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <a:container>true</a:container>
+                <a:since>4.11</a:since>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="shadowRef" type="tns:ObjectReferenceType">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <a:objectReferenceTargetType>c:ShadowType</a:objectReferenceTargetType>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ownerRef" type="tns:ObjectReferenceType" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <a:objectReferenceTargetType>c:FocusType</a:objectReferenceTargetType>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <!-- Container for a collection of owned shadow references -->
+    <xsd:complexType name="OwnedShadowsType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Container that holds a list of owned shadow references used as sampled data for mapping suggestions.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <a:container>true</a:container>
+                <a:since>4.11</a:since>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="ownedShadow" type="tns:OwnedShadowRefType" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
 </xsd:schema>

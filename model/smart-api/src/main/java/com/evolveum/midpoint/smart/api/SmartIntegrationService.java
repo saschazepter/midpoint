@@ -198,6 +198,7 @@ public interface SmartIntegrationService {
             ResourceObjectTypeIdentification typeIdentification,
             ShadowObjectClassStatisticsType statistics,
             SchemaMatchResultType schemaMatch,
+            OwnedShadowsType ownedShadows,
             @Nullable MappingsSuggestionFiltersType filters,
             @Nullable MappingsSuggestionInteractionMetadataType interactionMetadata,
             @Nullable CurrentActivityState<?> activityState,
@@ -280,4 +281,19 @@ public interface SmartIntegrationService {
     boolean cancelRequest(String token, long timeToWait, Task task, OperationResult result)
             throws SchemaException, ObjectNotFoundException, ConfigurationException, ExpressionEvaluationException,
             SecurityViolationException, CommunicationException;
+
+    /**
+     * Returns up to {@code maxSamples} owned shadow references (shadow + owner) for the given resource object type.
+     * Intended to provide sample data for mapping suggestion steps.
+     *
+     * Returned as a container type `OwnedShadowsType` to match task work state schema.
+     */
+    OwnedShadowsType sampleOwnedShadows(
+            String resourceOid,
+            ResourceObjectTypeIdentification typeIdentification,
+            int maxSamples,
+            Task task,
+            OperationResult result)
+            throws SchemaException, ConfigurationException, ExpressionEvaluationException, CommunicationException,
+            SecurityViolationException, ObjectNotFoundException;
 }
