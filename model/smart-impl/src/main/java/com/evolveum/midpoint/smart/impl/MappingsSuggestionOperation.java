@@ -203,12 +203,9 @@ class MappingsSuggestionOperation {
         ExpressionType expression = null;
         MappingsQualityAssessor.AssessmentResult assessment = null;
 
-        final Collection<? extends ValuesPair<?, ?>> pairs = developmentSample.pairs();
-        if (pairs.isEmpty()) {
+        if (developmentSample.pairs().isEmpty()) {
             LOGGER.trace(" -> no data pairs, so we'll use 'asIs' mapping (without calling LLM)");
-        } else if (isSourceDataMissing(pairs, direction)) {
-            LOGGER.trace(" -> source data missing; assuming 'asIs' is fine (no LLM call)");
-        } else if (isTargetDataMissing(pairs, direction)) {
+        } else if (isTargetDataMissing(testingSample.pairs(), direction)) {
             LOGGER.trace(" -> target data missing; assuming 'asIs' is fine (no LLM call)");
         } else if (canUseAsIsMapping(developmentSample, direction)) {
             LOGGER.trace(" -> 'asIs' does suffice according to the data ({}), so we'll use it (no LLM)", direction);
@@ -388,21 +385,6 @@ class MappingsSuggestionOperation {
             var shadowAttrName = sample.shadowAttributePath().rest().asSingleNameOrFail();
             return ctx.typeDefinition.findSimpleAttributeDefinition(shadowAttrName);
         }
-    }
-
-    /**
-     * Returns {@code true} if source data is missing.
-     * Data is considered missing if less than 5% of pairs have non-empty source values.
-     */
-    private boolean isSourceDataMissing(Collection<? extends ValuesPair<?, ?>> valuesPairs, MappingDirection direction) {
-        if (valuesPairs.isEmpty()) {
-            return true;
-        }
-        long countWithValues = valuesPairs.stream()
-                .filter(pair -> !getSourceValues(pair, direction).isEmpty())
-                .count();
-        double percentageWithData = (double) countWithValues / valuesPairs.size();
-        return percentageWithData < MISSING_DATA_THRESHOLD;
     }
 
     /**
