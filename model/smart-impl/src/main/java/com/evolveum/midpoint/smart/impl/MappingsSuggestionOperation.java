@@ -197,8 +197,8 @@ class MappingsSuggestionOperation {
             OperationResult parentResult)
             throws SchemaException, ExpressionEvaluationException, SecurityViolationException, LowQualityMappingException {
 
-        LOGGER.trace("Going to suggest {} mapping for {} <-> {} based on {} values pairs", direction,
-                matchPair.getShadowAttributePath(), matchPair.getFocusPropertyPath(), developmentSample.pairs().size());
+        LOGGER.trace("Going to suggest {} mapping for {} <-> {}", direction,
+                matchPair.getShadowAttributePath(), matchPair.getFocusPropertyPath());
 
         ExpressionType expression = null;
         MappingsQualityAssessor.AssessmentResult assessment = null;
@@ -207,7 +207,7 @@ class MappingsSuggestionOperation {
             LOGGER.trace(" -> no data pairs, so we'll use 'asIs' mapping (without calling LLM)");
         } else if (isTargetDataMissing(testingSample.pairs(), direction)) {
             LOGGER.trace(" -> target data missing; assuming 'asIs' is fine (no LLM call)");
-        } else if (canUseAsIsMapping(developmentSample, direction)) {
+        } else if (canUseAsIsMapping(testingSample, direction)) {
             LOGGER.trace(" -> 'asIs' does suffice according to the data ({}), so we'll use it (no LLM)", direction);
             assessment = this.qualityAssessor.assessMappingsQuality(
                     testingSample, expression, direction == MappingDirection.INBOUND, this.ctx.task, parentResult);
