@@ -26,6 +26,7 @@ import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
 import com.evolveum.midpoint.smart.api.ServiceClient;
 import com.evolveum.midpoint.smart.impl.mappings.LowQualityMappingException;
+import com.evolveum.midpoint.smart.impl.mappings.MissingSourceDataException;
 import com.evolveum.midpoint.smart.impl.mappings.OwnedShadow;
 import com.evolveum.midpoint.smart.impl.mappings.ValuesPair;
 import com.evolveum.midpoint.smart.impl.mappings.ValuesPairSample;
@@ -59,10 +60,10 @@ class MappingsSuggestionOperation {
 
     private static final Trace LOGGER = TraceManager.getTrace(MappingsSuggestionOperation.class);
 
-    private static final int ATTRIBUTE_MAPPING_EXAMPLES = 20;
-    private static final int ATTRIBUTE_TESTING_EXAMPLES = 200;
-    private static final double MISSING_DATA_THRESHOLD = 0.05; // 5% threshold
-    private static final float MINIMUM_QUALITY_THRESHOLD = 0.1f; // 10% minimum quality
+    private static final int LLM_EXAMPLES_COUNT = 20;
+    private static final int DEVELOPMENT_EXAMPLES_COUNT = 200;
+    private static final float MISSING_DATA_THRESHOLD = 0.05f;
+    private static final float MINIMUM_QUALITY_THRESHOLD = 0.1f;
 
     private static final String ID_SHADOWS_COLLECTION = "shadowsCollection";
     private static final String ID_MAPPINGS_SUGGESTION = "mappingsSuggestion";
@@ -118,11 +119,11 @@ class MappingsSuggestionOperation {
         }
 
         var ownedList = collectOwnedShadows(result);
-        int trainCount = Math.min(ATTRIBUTE_MAPPING_EXAMPLES, ownedList.size());
-        int testCount = Math.min(ATTRIBUTE_TESTING_EXAMPLES, ownedList.size());
-        var suggestionShadows = ownedList.subList(0, trainCount);
-        var testingShadows = ownedList.subList(ownedList.size() - testCount, ownedList.size());
-        LOGGER.trace("Train={}, Test={}, Total={}", trainCount, testCount, ownedList.size());
+        int llmDataCount = Math.min(LLM_EXAMPLES_COUNT, ownedList.size());
+        int developmentDataCount = Math.min(DEVELOPMENT_EXAMPLES_COUNT, ownedList.size());
+        var shadowsForLLM = ownedList.subList(0, llmDataCount);
+        var shadowsForDevelopment = ownedList.subList(ownedList.size() - developmentDataCount, ownedList.size());
+        LOGGER.trace("LLM data count = {}, Development data count={}, Total={}", llmDataCount, developmentDataCount, ownedList.size());
         ctx.checkIfCanRun();
 
         var mappingsSuggestionState = ctx.stateHolderFactory.create(ID_MAPPINGS_SUGGESTION, result);
@@ -136,21 +137,24 @@ class MappingsSuggestionOperation {
                 mappingsSuggestionState.flush(result);
                 ItemPath shadowAttrPath = PrismContext.get().itemPathParser().asItemPath(matchPair.getShadowAttributePath());
                 ItemPath focusPropPath = PrismContext.get().itemPathParser().asItemPath(matchPair.getFocusPropertyPath());
-                var suggestionPairs = ValuesPairSample.of(focusPropPath, shadowAttrPath)
-                        .from(suggestionShadows);
-                var testingPairs = ValuesPairSample.of(focusPropPath, shadowAttrPath)
-                        .from(testingShadows);
+                var valuePairsForLLM = ValuesPairSample.of(focusPropPath, shadowAttrPath)
+                        .from(shadowsForLLM);
+                var valuePairsForDevelopment = ValuesPairSample.of(focusPropPath, shadowAttrPath)
+                        .from(shadowsForDevelopment);
                 try {
                     suggestion.getAttributeMappings().add(
                             suggestMapping(
                                     matchPair,
-                                    suggestionPairs,
-                                    testingPairs,
+                                    valuePairsForLLM,
+                                    valuePairsForDevelopment,
                                     direction,
                                     result));
                     mappingsSuggestionState.recordProcessingEnd(op, ItemProcessingOutcomeType.SUCCESS);
                 } catch (LowQualityMappingException e) {
                     LOGGER.debug("Skipping mapping due to low quality: {}", e.getMessage());
+                    mappingsSuggestionState.recordProcessingEnd(op, ItemProcessingOutcomeType.SKIP);
+                } catch (MissingSourceDataException e) {
+                    LOGGER.debug("Skipping mapping due to missing source data: {}", e.getMessage());
                     mappingsSuggestionState.recordProcessingEnd(op, ItemProcessingOutcomeType.SKIP);
                 } catch (Exception e) {
                     // TODO Shouldn't we create an unfinished mapping with just error info?
@@ -177,10 +181,10 @@ class MappingsSuggestionOperation {
             throws SchemaException, ConfigurationException, ExpressionEvaluationException, CommunicationException,
             SecurityViolationException, ObjectNotFoundException, ObjectAlreadyExistsException {
         var state = ctx.stateHolderFactory.create(ID_SHADOWS_COLLECTION, result);
-        state.setExpectedProgress(ATTRIBUTE_MAPPING_EXAMPLES + ATTRIBUTE_TESTING_EXAMPLES);
+        state.setExpectedProgress(LLM_EXAMPLES_COUNT + DEVELOPMENT_EXAMPLES_COUNT);
         state.flush(result); // because finding an owned shadow can take a while
         try {
-            return ownedShadowsProvider.fetch(ctx, state, result, ATTRIBUTE_MAPPING_EXAMPLES + ATTRIBUTE_TESTING_EXAMPLES);
+            return ownedShadowsProvider.fetch(ctx, state, result, LLM_EXAMPLES_COUNT + DEVELOPMENT_EXAMPLES_COUNT);
         } catch (Exception e) {
             state.recordException(e);
             throw e;
@@ -191,11 +195,12 @@ class MappingsSuggestionOperation {
 
     private AttributeMappingsSuggestionType suggestMapping(
             SchemaMatchOneResultType matchPair,
-            ValuesPairSample<?, ?> developmentSample,
-            ValuesPairSample<?, ?> testingSample,
+            ValuesPairSample<?, ?> valuePairsForLLM,
+            ValuesPairSample<?, ?> valuePairsForDevelopment,
             MappingDirection direction,
             OperationResult parentResult)
-            throws SchemaException, ExpressionEvaluationException, SecurityViolationException, LowQualityMappingException {
+            throws SchemaException, ExpressionEvaluationException, SecurityViolationException, LowQualityMappingException,
+            MissingSourceDataException {
 
         LOGGER.trace("Going to suggest {} mapping for {} <-> {}", direction,
                 matchPair.getShadowAttributePath(), matchPair.getFocusPropertyPath());
@@ -203,26 +208,28 @@ class MappingsSuggestionOperation {
         ExpressionType expression = null;
         MappingsQualityAssessor.AssessmentResult assessment = null;
 
-        if (developmentSample.pairs().isEmpty()) {
+        if (valuePairsForLLM.pairs().isEmpty() || valuePairsForDevelopment.pairs().isEmpty()) {
             LOGGER.trace(" -> no data pairs, so we'll use 'asIs' mapping (without calling LLM)");
-        } else if (isTargetDataMissing(testingSample.pairs(), direction)) {
+        } else if (isSourceDataMissing(valuePairsForDevelopment.pairs(), direction)) {
+            throw new MissingSourceDataException(matchPair.getShadowAttributePath(), matchPair.getFocusPropertyPath());
+        } else if (isTargetDataMissing(valuePairsForDevelopment.pairs(), direction)) {
             LOGGER.trace(" -> target data missing; assuming 'asIs' is fine (no LLM call)");
-        } else if (canUseAsIsMapping(testingSample, direction)) {
+        } else if (canUseAsIsMapping(valuePairsForDevelopment, direction)) {
             LOGGER.trace(" -> 'asIs' does suffice according to the data ({}), so we'll use it (no LLM)", direction);
             assessment = this.qualityAssessor.assessMappingsQuality(
-                    testingSample, expression, direction == MappingDirection.INBOUND, this.ctx.task, parentResult);
+                    valuePairsForDevelopment, expression, direction == MappingDirection.INBOUND, this.ctx.task, parentResult);
         } else {
             LOGGER.trace(" -> going to ask LLM about mapping script");
             String errorLog = null;
             String retryScript = null;
 
             for (int attempt = 1; attempt <= 2; attempt++) {
-                var mappingResponse = askMicroservice(matchPair, developmentSample.pairs(), errorLog, retryScript, direction);
+                var mappingResponse = askMicroservice(matchPair, valuePairsForLLM.pairs(), errorLog, retryScript, direction);
                 retryScript = mappingResponse != null ? mappingResponse.getTransformationScript() : null;
                 expression = buildScriptExpression(mappingResponse);
                 try {
                     assessment = this.qualityAssessor.assessMappingsQuality(
-                            testingSample, expression, direction == MappingDirection.INBOUND, this.ctx.task, parentResult);
+                            valuePairsForDevelopment, expression, direction == MappingDirection.INBOUND, this.ctx.task, parentResult);
                     break;
                 } catch (ExpressionEvaluationException | SecurityViolationException e) {
                     if (attempt == 1) {
@@ -245,7 +252,7 @@ class MappingsSuggestionOperation {
         }
 
         AttributeMappingsSuggestionType suggestion = buildAttributeMappingSuggestion(
-                developmentSample.shadowAttributePath(), developmentSample.focusPropertyPath(),
+                valuePairsForDevelopment.shadowAttributePath(), valuePairsForDevelopment.focusPropertyPath(),
                 assessment != null ? assessment.quality() : null, expression, direction);
         SmartMetadataUtil.markAsAiProvided(suggestion); // everything is AI-provided now
         return suggestion;
@@ -397,6 +404,21 @@ class MappingsSuggestionOperation {
         }
         long countWithValues = valuesPairs.stream()
                 .filter(pair -> !getTargetValues(pair, direction).isEmpty())
+                .count();
+        double percentageWithData = (double) countWithValues / valuesPairs.size();
+        return percentageWithData < MISSING_DATA_THRESHOLD;
+    }
+
+    /**
+     * Returns {@code true} if source data is missing.
+     * Data is considered missing if less than 5% of pairs have non-empty source values.
+     */
+    private boolean isSourceDataMissing(Collection<? extends ValuesPair<?, ?>> valuesPairs, MappingDirection direction) {
+        if (valuesPairs.isEmpty()) {
+            return true;
+        }
+        long countWithValues = valuesPairs.stream()
+                .filter(pair -> !getSourceValues(pair, direction).isEmpty())
                 .count();
         double percentageWithData = (double) countWithValues / valuesPairs.size();
         return percentageWithData < MISSING_DATA_THRESHOLD;

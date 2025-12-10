@@ -745,14 +745,9 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match);
-        assertThat(suggestion.getAttributeMappings()).hasSize(1);
-        AttributeMappingsSuggestionType mapping = suggestion.getAttributeMappings().get(0);
-        assertThat(mapping.getDefinition().getInbound().get(0).getExpression())
-                .as("Source data missing should result in asIs mapping")
-                .isNull();
-        assertThat(mapping.getExpectedQuality())
-                .as("With no source data, expected quality should be null")
-                .isNull();
+        assertThat(suggestion.getAttributeMappings())
+                .as("Source data missing should discard mapping")
+                .isEmpty();
     }
 
     @Test
@@ -785,14 +780,9 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match);
-        assertThat(suggestion.getAttributeMappings()).hasSize(1);
-        AttributeMappingsSuggestionType mapping = suggestion.getAttributeMappings().get(0);
-        assertThat(mapping.getDefinition().getOutbound().getExpression())
-                .as("Outbound source data missing should result in asIs mapping")
-                .isNull();
-        assertThat(mapping.getExpectedQuality())
-                .as("With no source data, expected quality should be null")
-                .isNull();
+        assertThat(suggestion.getAttributeMappings())
+                .as("Source data missing should discard mapping")
+                .isEmpty();
     }
 
     @Test
