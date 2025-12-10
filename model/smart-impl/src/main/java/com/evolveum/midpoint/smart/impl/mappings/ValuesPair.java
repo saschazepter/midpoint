@@ -1,6 +1,7 @@
 package com.evolveum.midpoint.smart.impl.mappings;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
@@ -27,4 +28,17 @@ public record ValuesPair<S, F>(Collection<S> shadowValues, Collection<F> focusVa
                 .map(Object::toString)
                 .toList();
     }
+
+    /** Direction-aware accessor for source values from a pair. */
+    public Collection<?> getSourceValues(MappingDirection direction) {
+        var values = direction == MappingDirection.INBOUND ? shadowValues() : focusValues();
+        return values != null ? values : List.of();
+    }
+
+    /** Direction-aware accessor for target values from a pair. */
+    public Collection<?> getTargetValues(MappingDirection direction) {
+        var values = direction == MappingDirection.INBOUND ? focusValues() : shadowValues();
+        return values != null ? values : List.of();
+    }
+
 }
