@@ -18,11 +18,8 @@ import org.jetbrains.annotations.Nullable;
 import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.repo.common.activity.ActivityInterruptedException;
-import com.evolveum.midpoint.repo.common.activity.run.state.CurrentActivityState;
-import com.evolveum.midpoint.schema.processor.ResourceObjectTypeIdentification;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
-import com.evolveum.midpoint.smart.api.ServiceClient;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.SystemMappingSuggestion;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaProvider;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaService;
@@ -32,7 +29,6 @@ import com.evolveum.midpoint.smart.impl.mappings.MissingSourceDataException;
 import com.evolveum.midpoint.smart.impl.mappings.OwnedShadow;
 import com.evolveum.midpoint.smart.impl.mappings.ValuesPairSample;
 import com.evolveum.midpoint.smart.impl.scoring.MappingsQualityAssessor;
-import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.util.exception.CommunicationException;
 import com.evolveum.midpoint.util.exception.ConfigurationException;
 import com.evolveum.midpoint.util.exception.ExpressionEvaluationException;
@@ -72,39 +68,39 @@ class MappingsSuggestionOperation {
     private final OwnedShadowsProvider ownedShadowsProvider;
     private final WellKnownSchemaService wellKnownSchemaService;
     private final boolean isInbound;
+    private final boolean useAiService;
 
     private MappingsSuggestionOperation(
             TypeOperationContext ctx,
             MappingsQualityAssessor qualityAssessor,
             OwnedShadowsProvider ownedShadowsProvider,
             WellKnownSchemaService wellKnownSchemaService,
-            boolean isInbound) {
+            boolean isInbound,
+            boolean useAiService) {
         this.ctx = ctx;
         this.qualityAssessor = qualityAssessor;
         this.ownedShadowsProvider = ownedShadowsProvider;
         this.wellKnownSchemaService = wellKnownSchemaService;
         this.isInbound = isInbound;
+        this.useAiService = useAiService;
     }
 
     static MappingsSuggestionOperation init(
-            ServiceClient serviceClient,
-            String resourceOid,
-            ResourceObjectTypeIdentification typeIdentification,
-            @Nullable CurrentActivityState<?> activityState,
+            TypeOperationContext ctx,
             MappingsQualityAssessor qualityAssessor,
             OwnedShadowsProvider ownedShadowsProvider,
             WellKnownSchemaService wellKnownSchemaService,
             boolean isInbound,
-            Task task,
-            OperationResult result)
+            boolean useAiService)
             throws SchemaException, ExpressionEvaluationException, SecurityViolationException, CommunicationException,
             ConfigurationException, ObjectNotFoundException {
         return new MappingsSuggestionOperation(
-                TypeOperationContext.init(serviceClient, resourceOid, typeIdentification, activityState, task, result),
+                ctx,
                 qualityAssessor,
                 ownedShadowsProvider,
                 wellKnownSchemaService,
-                isInbound);
+                isInbound,
+                useAiService);
     }
 
     private MappingDirection resolveDirection() {
@@ -275,7 +271,7 @@ class MappingsSuggestionOperation {
             LOGGER.trace("AsIs {} mapping suffice according to the data (no LLM call).", valuePairsForValidation.direction());
             assessment = this.qualityAssessor.assessMappingsQuality(
                     valuePairsForValidation, expression, this.ctx.task, parentResult);
-        } else {
+        } else if (useAiService){
             LOGGER.trace("Going to ask LLM about mapping script");
             String errorLog = null;
             String retryScript = null;

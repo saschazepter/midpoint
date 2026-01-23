@@ -7,24 +7,14 @@
 
 package com.evolveum.midpoint.smart.impl;
 
-import static com.evolveum.midpoint.prism.xml.XmlTypeConverter.toMillis;
-import static com.evolveum.midpoint.schema.constants.SchemaConstants.*;
-
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.xml.datatype.Duration;
 import javax.xml.namespace.QName;
 
-import com.evolveum.midpoint.prism.PrismPropertyDefinition;
-
-import com.evolveum.midpoint.schema.util.ObjectTypeUtil;
-import com.evolveum.midpoint.schema.util.ShadowObjectTypeStatisticsTypeUtil;
 import com.evolveum.midpoint.smart.api.synchronization.SourceSynchronizationAnswers;
 import com.evolveum.midpoint.smart.api.synchronization.SynchronizationConfigurationScenario;
 import com.evolveum.midpoint.smart.api.synchronization.TargetSynchronizationAnswers;
-import com.evolveum.midpoint.util.DOMUtil;
-import com.evolveum.midpoint.util.QNameUtil;
-import com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -597,6 +587,7 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
             ResourceObjectTypeIdentification typeIdentification,
             SchemaMatchResultType schemaMatch,
             Boolean isInbound,
+            Boolean useAiService,
             @Nullable MappingsSuggestionInteractionMetadataType interactionMetadata,
             @Nullable CurrentActivityState<?> activityState,
             Task task,
@@ -610,7 +601,7 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
                 .build();
         try (var serviceClient = this.clientFactory.getServiceClient(result)) {
             var mappings = this.mappingSuggestionOperationFactory.create(serviceClient, resourceOid,
-                    typeIdentification, activityState, isInbound, task, result)
+                    typeIdentification, activityState, isInbound, useAiService, task, result)
                     .suggestMappings(result, schemaMatch);
             LOGGER.debug("Suggested mappings:\n{}", mappings.debugDumpLazily(1));
             return mappings;

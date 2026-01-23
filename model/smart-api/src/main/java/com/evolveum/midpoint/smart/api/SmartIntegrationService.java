@@ -213,6 +213,7 @@ public interface SmartIntegrationService {
             ResourceObjectTypeIdentification typeIdentification,
             SchemaMatchResultType schemaMatch,
             Boolean isInbound,
+            Boolean useAiService,
             @Nullable MappingsSuggestionInteractionMetadataType interactionMetadata,
             @Nullable CurrentActivityState<?> activityState,
             Task task,
