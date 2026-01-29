@@ -13,6 +13,7 @@ import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AttributeMappingsSuggestionType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.InboundMappingType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ResourceAttributeDefinitionType;
 import com.evolveum.prism.xml.ns._public.types_3.ItemPathType;
 
 /**
@@ -21,7 +22,8 @@ import com.evolveum.prism.xml.ns._public.types_3.ItemPathType;
  * and keeping only the best ones based on their target paths and quality metrics.
  *
  * Supports deduplication against existing mappings configured on the resource
- * Target paths that already have mappings are ignored.
+ * and accepted suggestions that are held in GUI's unsaved state.
+ * Target paths that already have mappings or accepted suggestions are ignored.
  */
 class AttributeMappingCandidateSet {
 
@@ -30,12 +32,17 @@ class AttributeMappingCandidateSet {
     /** Target paths that already have mappings configured; proposals for these are skipped. */
     private final List<ItemPath> existingMappingPaths;
 
-    AttributeMappingCandidateSet() {
-        this.existingMappingPaths = List.of();
-    }
+    /** Target paths from accepted suggestions not yet saved; proposals for these are skipped. */
+    private final List<ItemPath> acceptedSuggestionPaths;
 
-    AttributeMappingCandidateSet(Collection<ItemPath> existingMappingPaths) {
-        this.existingMappingPaths = List.copyOf(existingMappingPaths);
+    AttributeMappingCandidateSet(
+            Collection<ItemPath> existingMappingPaths,
+            List<ResourceAttributeDefinitionType> acceptedSuggestions) {
+        this.existingMappingPaths = existingMappingPaths == null ? List.of() : List.copyOf(existingMappingPaths);
+        this.acceptedSuggestionPaths = acceptedSuggestions == null ? List.of() : acceptedSuggestions.stream()
+                .map(AttributeMappingCandidateSet::extractTargetPathFromDefinition)
+                .filter(path -> path != null)
+                .toList();
     }
 
     /**
@@ -88,11 +95,17 @@ class AttributeMappingCandidateSet {
 
     /**
      * Extracts the target path from a mapping suggestion for duplicate detection.
+     */
+    private static ItemPath extractTargetPath(AttributeMappingsSuggestionType suggestion) {
+        return extractTargetPathFromDefinition(suggestion.getDefinition());
+    }
+
+    /**
+     * Extracts the target path from a resource attribute definition.
      * For inbound mappings, this is the focus property (target path).
      * For outbound mappings, this is the resource attribute (ref).
      */
-    private static ItemPath extractTargetPath(AttributeMappingsSuggestionType suggestion) {
-        var definition = suggestion.getDefinition();
+    private static ItemPath extractTargetPathFromDefinition(ResourceAttributeDefinitionType definition) {
         if (definition == null) {
             return null;
         }
@@ -137,8 +150,8 @@ class AttributeMappingCandidateSet {
     }
 
     private boolean isAlreadyMapped(ItemPath targetPath) {
-        return existingMappingPaths.stream()
-                .anyMatch(targetPath::equivalent);
+        return existingMappingPaths.stream().anyMatch(targetPath::equivalent)
+                || acceptedSuggestionPaths.stream().anyMatch(targetPath::equivalent);
     }
 
     /**
