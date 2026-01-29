@@ -24,6 +24,8 @@ import com.evolveum.midpoint.test.DummyTestResource;
 import com.evolveum.midpoint.test.TestObject;
 import com.evolveum.midpoint.util.exception.CommonException;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
+import com.evolveum.prism.xml.ns._public.types_3.ItemPathType;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
@@ -182,6 +184,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 true,
+                null,
                 task,
                 result);
 
@@ -240,6 +243,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 true,
+                null,
                 task,
                 result);
 
@@ -298,6 +302,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 true,
+                null,
                 task,
                 result);
 
@@ -319,5 +324,62 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         assertThat(SmartMetadataUtil.isMarkedAsSystemProvided(cnMapping.asPrismContainerValue()))
                 .as("System-provided should be preferred when quality is similar")
                 .isTrue();
+    }
+
+    @Test
+    public void test120DeduplicationAgainstAcceptedSuggestion() throws Exception {
+        Task task = getTestTask();
+        OperationResult result = task.getResult();
+
+        modifyUserReplace(USER1.oid, UserType.F_TELEPHONE_NUMBER, "123-456-7890");
+        modifyUserReplace(USER2.oid, UserType.F_TELEPHONE_NUMBER, "123-456-7891");
+        modifyUserReplace(USER3.oid, UserType.F_TELEPHONE_NUMBER, "123-456-7892");
+
+        modifyShadowReplace("user1", TELEPHONE_NUMBER, "123-456-7890");
+        modifyShadowReplace("user2", TELEPHONE_NUMBER, "123-456-7891");
+        modifyShadowReplace("user3", TELEPHONE_NUMBER, "123-456-7892");
+
+        refreshShadows();
+
+        // Create an accepted suggestion for telephoneNumber -> telephoneNumber
+        var acceptedSuggestion = new AttributeMappingsSuggestionType();
+        var def = new ResourceAttributeDefinitionType();
+        def.ref(new ItemPathType(TELEPHONE_NUMBER.path()));
+        var inbound = new InboundMappingType();
+        inbound.target(new VariableBindingDefinitionType().path(new ItemPathType(ItemPath.create(UserType.F_TELEPHONE_NUMBER))));
+        def.getInbound().add(inbound);
+        acceptedSuggestion.setDefinition(def);
+
+        var interactionMetadata = new MappingsSuggestionInteractionMetadataType();
+        interactionMetadata.getAcceptedAttributeMappingsSuggestion().add(acceptedSuggestion);
+
+        var mockClient = createClient(List.of(), List.of(), null, null, null, null, null, null, null);
+        TestServiceClientFactory.mockServiceClient(clientFactoryMock, mockClient);
+
+        var op = MappingsSuggestionOperation.init(
+                mockClient,
+                RESOURCE_LDAP.oid,
+                ACCOUNT_DEFAULT,
+                null,
+                new MappingsQualityAssessor(expressionFactory),
+                new OwnedShadowsProviderFromResource(),
+                wellKnownSchemaService,
+                true,
+                interactionMetadata,
+                task,
+                result);
+
+        var match = smartIntegrationService.computeSchemaMatch(RESOURCE_LDAP.oid, ACCOUNT_DEFAULT, true, task, result);
+        MappingsSuggestionType suggestion = op.suggestMappings(result, match);
+
+        var telephoneMappings = suggestion.getAttributeMappings().stream()
+                .filter(m -> m.getDefinition() != null
+                        && m.getDefinition().getRef() != null
+                        && m.getDefinition().getRef().toString().contains("telephoneNumber"))
+                .toList();
+
+        assertThat(telephoneMappings)
+                .as("Mapping for telephoneNumber should be excluded because it was already accepted in GUI")
+                .isEmpty();
     }
 }
