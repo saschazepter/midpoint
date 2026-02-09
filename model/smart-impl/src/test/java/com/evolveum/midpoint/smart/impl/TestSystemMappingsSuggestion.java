@@ -361,4 +361,131 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
                 .as("Mapping for telephoneNumber should be excluded because it was already accepted in GUI")
                 .isEmpty();
     }
+
+    @Test
+    public void test130OutboundDnMappingSuggestion() throws Exception {
+        Task task = getTestTask();
+        OperationResult result = task.getResult();
+
+        modifyShadowReplace("user3", DISTINGUISHED_NAME, "uid=user3,ou=People,dc=example,dc=com");
+
+        refreshShadows();
+
+        var mockClient = createClient(List.of(), List.of(), null, null, null, null, null, null, null);
+        TestServiceClientFactory.mockServiceClient(clientFactoryMock, mockClient);
+        var ctx = TypeOperationContext.init(mockClient, RESOURCE_LDAP.oid, ACCOUNT_DEFAULT, null, task, result);
+
+        var op = MappingsSuggestionOperation.init(
+                ctx,
+                new MappingsQualityAssessor(expressionFactory),
+                new OwnedShadowsProviderFromResource(),
+                wellKnownSchemaService,
+                heuristicRuleMatcher,
+                false, // outbound
+                true);
+
+        var match = smartIntegrationService.computeSchemaMatch(RESOURCE_LDAP.oid, ACCOUNT_DEFAULT, false, task, result);
+        MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
+
+        assertThat(suggestion.getAttributeMappings())
+                .as("Outbound system mappings should be present")
+                .isNotEmpty();
+
+        var dnMapping = suggestion.getAttributeMappings().stream()
+                .filter(m -> m.getDefinition() != null
+                        && m.getDefinition().getRef() != null
+                        && m.getDefinition().getRef().toString().endsWith("dn"))
+                .findFirst();
+
+        assertThat(dnMapping)
+                .as("DN outbound mapping should be present")
+                .isPresent();
+
+        var outboundMapping = dnMapping.get().getDefinition().getOutbound();
+        assertThat(outboundMapping)
+                .as("DN mapping should have outbound configuration")
+                .isNotNull();
+
+        var expression = outboundMapping.getExpression();
+        assertThat(expression)
+                .as("DN mapping should have expression")
+                .isNotNull();
+
+        assertThat(expression.getDescription())
+                .as("DN mapping expression should have description")
+                .contains("Compose DN");
+
+        var scriptEvaluator = expression.getExpressionEvaluator().stream()
+                .filter(e -> e.getValue() instanceof ScriptExpressionEvaluatorType)
+                .map(e -> (ScriptExpressionEvaluatorType) e.getValue())
+                .findFirst();
+
+        assertThat(scriptEvaluator)
+                .as("DN mapping should have script expression evaluator")
+                .isPresent();
+
+        String script = scriptEvaluator.get().getCode();
+        assertThat(script)
+                .as("Script should use basic.composeDnWithSuffix function")
+                .contains("basic.composeDnWithSuffix");
+        assertThat(script)
+                .as("Script should use 'uid' as RDN type")
+                .contains("'uid'");
+        assertThat(script)
+                .as("Script should use 'name' as RDN value")
+                .contains("name");
+        assertThat(script)
+                .as("Script should use extracted suffix from sample DNs")
+                .contains("ou=People,dc=example,dc=com");
+        assertThat(script)
+                .as("Script should NOT use resource config fallback")
+                .doesNotContain("basic.getResourceIcfConfigurationPropertyValue");
+
+        assertThat(SmartMetadataUtil.isMarkedAsSystemProvided(dnMapping.get().asPrismContainerValue()))
+                .as("DN mapping should be marked as system-provided")
+                .isTrue();
+
+        assertThat(dnMapping.get().getExpectedQuality())
+                .as("DN mapping should have quality assessed (script executed successfully)")
+                .isNotNull()
+                .isEqualTo(1.0f);
+    }
+
+    @Test
+    public void test132OutboundDnMappingNotSuggestedWhenNoSamples() throws Exception {
+        Task task = getTestTask();
+        OperationResult result = task.getResult();
+
+        modifyShadowReplace("user1", DISTINGUISHED_NAME);
+        modifyShadowReplace("user2", DISTINGUISHED_NAME);
+        modifyShadowReplace("user3", DISTINGUISHED_NAME);
+
+        refreshShadows();
+
+        var mockClient = createClient(List.of(), List.of(), null, null, null, null, null, null, null);
+        TestServiceClientFactory.mockServiceClient(clientFactoryMock, mockClient);
+        var ctx = TypeOperationContext.init(mockClient, RESOURCE_LDAP.oid, ACCOUNT_DEFAULT, null, task, result);
+
+        var op = MappingsSuggestionOperation.init(
+                ctx,
+                new MappingsQualityAssessor(expressionFactory),
+                new OwnedShadowsProviderFromResource(),
+                wellKnownSchemaService,
+                heuristicRuleMatcher,
+                false, // outbound
+                true);
+
+        var match = smartIntegrationService.computeSchemaMatch(RESOURCE_LDAP.oid, ACCOUNT_DEFAULT, false, task, result);
+        MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
+
+        var dnMapping = suggestion.getAttributeMappings().stream()
+                .filter(m -> m.getDefinition() != null
+                        && m.getDefinition().getRef() != null
+                        && m.getDefinition().getRef().toString().endsWith("dn"))
+                .findFirst();
+
+        assertThat(dnMapping)
+                .as("DN mapping should NOT be suggested when no DN found in samples (no resource config fallback)")
+                .isEmpty();
+    }
 }

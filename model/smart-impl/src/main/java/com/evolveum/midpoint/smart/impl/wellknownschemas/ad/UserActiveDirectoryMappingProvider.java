@@ -9,11 +9,13 @@
 package com.evolveum.midpoint.smart.impl.wellknownschemas.ad;
 
 import com.evolveum.midpoint.prism.path.ItemPath;
+import com.evolveum.midpoint.smart.impl.mappings.OwnedShadow;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.SystemMappingSuggestion;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaProvider;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
+import org.jetbrains.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -26,7 +28,7 @@ public class UserActiveDirectoryMappingProvider implements WellKnownSchemaProvid
 
     @Override
     public WellKnownSchemaType getSupportedSchemaType() {
-        return com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaType.AD_USER;
+        return WellKnownSchemaType.AD_USER;
     }
 
     @Override
@@ -52,7 +54,7 @@ public class UserActiveDirectoryMappingProvider implements WellKnownSchemaProvid
     }
 
     @Override
-    public List<SystemMappingSuggestion> suggestOutboundMappings() {
+    public List<SystemMappingSuggestion> suggestOutboundMappings(@Nullable List<OwnedShadow> sampleShadows) {
         List<SystemMappingSuggestion> mappings = new ArrayList<>();
         mappings.add(SystemMappingSuggestion.createAsIsSuggestion("sAMAccountName", UserType.F_NAME));
         mappings.add(SystemMappingSuggestion.createAsIsSuggestion("cn", UserType.F_FULL_NAME));
