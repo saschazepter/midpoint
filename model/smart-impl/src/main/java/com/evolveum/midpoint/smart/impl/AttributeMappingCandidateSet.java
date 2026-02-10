@@ -11,20 +11,20 @@ import java.util.*;
 
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.AttributeMappingsSuggestionType;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.InboundMappingType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 import com.evolveum.prism.xml.ns._public.types_3.ItemPathType;
+
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Manages a collection of attribute mapping candidates, handling duplicate detection
- * and quality-based selection. Encapsulates the logic for proposing new candidates
- * and keeping only the best ones based on their target paths and quality metrics.
- *
- * Supports deduplication against existing mappings configured on the resource
- * and accepted suggestions that are held in GUI's unsaved state.
- * Target paths that already have mappings or accepted suggestions are ignored.
+ * and quality-based selection.
+ * Multiple suggestions per target are allowed if they differ in source or script.
+ * System-provided mappings (heuristics) are preferred over AI when quality is equal.
  */
 class AttributeMappingCandidateSet {
+
+    private static final float QUALITY_THRESHOLD = 0.4f;
 
     private final List<Candidate> candidates = new ArrayList<>();
 
@@ -36,28 +36,43 @@ class AttributeMappingCandidateSet {
     }
 
     /**
-     * Proposes a new mapping candidate. If a duplicate (based on target path) already exists,
-     * the candidate with better quality is kept. System-provided mappings are preferred over
-     * AI-provided ones when quality is equal.
+     * Proposes a new mapping candidate.
+     * Deduplication logic:
+     * - Among suggestions: Based on triple (source, target, script) where script is null for AS-IS mappings
+     * - Against existing mappings: Based on target path only
+     * Filtering logic:
+     * - New data scenario (quality = null): Keep ALL mappings
+     * - Existing data scenario (quality != null): Keep all above threshold (0.4)
+     * When duplicates exist, the better quality candidate is kept.
+     * System-provided mappings are preferred over AI when quality is equal.
      */
     void propose(AttributeMappingsSuggestionType suggestion) {
-        ItemPath targetPath = extractTargetPath(suggestion);
-        if (targetPath == null) {
+        var identity = MappingIdentity.extract(suggestion);
+        if (identity.targetPath() == null) {
             throw new IllegalArgumentException("Target path must not be null for suggestion: " + suggestion);
         }
 
-        if (excludedMappingPaths.stream().anyMatch(targetPath::equivalent)) {
+        // Deduplicate against existing mappings by target path only
+        if (excludedMappingPaths.stream().anyMatch(identity.targetPath()::equivalent)) {
             return;
         }
 
-        float newQuality = getQuality(suggestion);
+        Float newQuality = suggestion.getExpectedQuality();
         boolean newIsSystemProvided = SmartMetadataUtil.isMarkedAsSystemProvided(suggestion.asPrismContainerValue());
 
+        // Quality filtering: if quality is present, apply threshold
+        if (newQuality != null && newQuality <= QUALITY_THRESHOLD) {
+            return;
+        }
+
+        // Deduplicate among suggestions by (source, target, script) triple
         var iterator = candidates.iterator();
         while (iterator.hasNext()) {
             Candidate existing = iterator.next();
-            if (targetPath.equivalent(existing.targetPath())) {
-                float existingQuality = getQuality(existing.suggestion());
+
+            // Check if it's a duplicate based on (source, target, script)
+            if (identity.isDuplicateOf(existing.identity())) {
+                Float existingQuality = existing.suggestion().getExpectedQuality();
                 boolean existingIsSystemProvided = SmartMetadataUtil.isMarkedAsSystemProvided(
                         existing.suggestion().asPrismContainerValue());
 
@@ -70,74 +85,181 @@ class AttributeMappingCandidateSet {
             }
         }
 
-        candidates.add(new Candidate(targetPath, suggestion));
+        candidates.add(new Candidate(identity, suggestion));
     }
 
     /**
      * Returns an immutable list of the best mapping suggestions.
-     * Each suggestion contains exactly one inbound or outbound mapping.
+     * Multiple suggestions per target attribute are allowed if they differ in source or script.
+     * Results are sorted by quality (descending), with system-provided preferred over AI when equal.
      */
     List<AttributeMappingsSuggestionType> best() {
         return candidates.stream()
+                .sorted(this::compareByQualityAndOrigin)
                 .map(Candidate::suggestion)
                 .toList();
     }
 
+    private int compareByQualityAndOrigin(Candidate a, Candidate b) {
+        Float qualityA = a.suggestion().getExpectedQuality();
+        Float qualityB = b.suggestion().getExpectedQuality();
+        boolean aIsSystem = SmartMetadataUtil.isMarkedAsSystemProvided(a.suggestion().asPrismContainerValue());
+        boolean bIsSystem = SmartMetadataUtil.isMarkedAsSystemProvided(b.suggestion().asPrismContainerValue());
+
+        // Sort by quality descending (nulls last, meaning new data scenarios come last)
+        if (qualityA != null && qualityB != null) {
+            int qualityCompare = Float.compare(qualityB, qualityA);
+            if (qualityCompare != 0) {
+                return qualityCompare;
+            }
+        } else if (qualityA != null) {
+            return -1; // a has quality, b doesn't - a comes first
+        } else if (qualityB != null) {
+            return 1; // b has quality, a doesn't - b comes first
+        }
+
+        // If quality is equal (or both null), prefer system-provided
+        if (aIsSystem && !bIsSystem) {
+            return -1;
+        } else if (!aIsSystem && bIsSystem) {
+            return 1;
+        }
+
+        return 0;
+    }
+
     /**
-     * Extracts the target path from a mapping suggestion for duplicate detection.
-     * For inbound mappings, this is the focus property (target path).
-     * For outbound mappings, this is the resource attribute (ref).
+     * Identity of a mapping used for deduplication.
+     * Contains the triple (source, target, script) that uniquely identifies a mapping.
      */
-    private static ItemPath extractTargetPath(AttributeMappingsSuggestionType suggestion) {
-        var definition = suggestion.getDefinition();
-        if (definition == null) {
+    private record MappingIdentity(ItemPath targetPath, ItemPath sourcePath, @Nullable String script) {
+
+        boolean isDuplicateOf(MappingIdentity other) {
+            return this.targetPath.equivalent(other.targetPath) && this.sourcePath.equivalent(other.sourcePath)
+                    && (this.script != null && this.script.equals(other.script) || this.script == null && other.script == null);
+        }
+
+        static MappingIdentity extract(AttributeMappingsSuggestionType suggestion) {
+            var definition = suggestion.getDefinition();
+            if (definition == null) {
+                throw new IllegalArgumentException("No definition found for suggestion: " + suggestion);
+            }
+
+            var inbounds = definition.getInbound();
+            if (inbounds != null && !inbounds.isEmpty()) {
+                return extractFromInbound(definition, inbounds.get(0));
+            }
+
+            var outbound = definition.getOutbound();
+            if (outbound != null) {
+                return extractFromOutbound(definition, outbound);
+            }
+
+            throw new IllegalArgumentException("No inbound or outbound mapping found for suggestion: " + suggestion);
+        }
+
+        private static MappingIdentity extractFromInbound(
+                ResourceAttributeDefinitionType definition, InboundMappingType inbound) {
+            // Target: focus property from inbound target
+            ItemPath target = null;
+            if (inbound.getTarget() != null && inbound.getTarget().getPath() != null) {
+                target = toItemPath(inbound.getTarget().getPath());
+            }
+            // Source: resource attribute from ref
+            ItemPath source = null;
+            if (definition.getRef() != null) {
+                source = definition.getRef().getItemPath();
+            }
+            if (target == null || source == null) {
+                throw new IllegalArgumentException("No target or source found for inbound mapping: " + inbound);
+            }
+            String script = extractScriptFromExpression(inbound.getExpression());
+            return new MappingIdentity(target, source, script);
+        }
+
+        private static MappingIdentity extractFromOutbound(
+                ResourceAttributeDefinitionType definition, MappingType outbound) {
+            // Target: resource attribute from ref
+            ItemPath target = null;
+            if (definition.getRef() != null) {
+                target = definition.getRef().getItemPath();
+            }
+            // Source: focus property from outbound source (first if multiple)
+            ItemPath source = null;
+            var sources = outbound.getSource();
+            if (sources != null && !sources.isEmpty()) {
+                var firstSource = sources.get(0);
+                if (firstSource != null && firstSource.getPath() != null) {
+                    source = toItemPath(firstSource.getPath());
+                }
+            }
+            if (target == null || source == null) {
+                throw new IllegalArgumentException("No target or source found for outbound mapping: " + outbound);
+            }
+            // Script: from outbound expression
+            String script = extractScriptFromExpression(outbound.getExpression());
+            return new MappingIdentity(target, source, script);
+        }
+
+        private static @Nullable String extractScriptFromExpression(@Nullable ExpressionType expression) {
+            if (expression == null) {
+                return null;
+            }
+            var evaluators = expression.getExpressionEvaluator();
+            if (evaluators != null) {
+                for (var evaluator : evaluators) {
+                    if (evaluator.getValue() instanceof ScriptExpressionEvaluatorType scriptEval) {
+                        return scriptEval.getCode();
+                    }
+                }
+            }
             return null;
         }
 
-        List<InboundMappingType> inbounds = definition.getInbound();
-        if (inbounds != null && !inbounds.isEmpty()) {
-            var inbound = inbounds.get(0);
-            if (inbound.getTarget() != null && inbound.getTarget().getPath() != null) {
-                Object path = inbound.getTarget().getPath();
-                if (path instanceof ItemPathType itemPath) {
-                    return itemPath.getItemPath();
-                }
+        private static ItemPath toItemPath(Object path) {
+            if (path instanceof ItemPathType itemPath) {
+                return itemPath.getItemPath();
             }
+            return null;
         }
-
-        var outbound = definition.getOutbound();
-        if (outbound != null) {
-            var ref = definition.getRef();
-            if (ref != null) {
-                return ref.getItemPath();
-            }
-        }
-
-        return null;
-    }
-
-    private static float getQuality(AttributeMappingsSuggestionType suggestion) {
-        Float quality = suggestion.getExpectedQuality();
-        return quality != null ? quality : 0.0f;
     }
 
     private static boolean shouldReplaceWith(
-            float newQuality, boolean newIsSystemProvided,
-            float existingQuality, boolean existingIsSystemProvided) {
-        if (newQuality > existingQuality) {
+            @Nullable Float newQuality, boolean newIsSystemProvided,
+            @Nullable Float existingQuality, boolean existingIsSystemProvided) {
+        // If both have quality values, compare them
+        if (newQuality != null && existingQuality != null) {
+            if (newQuality > existingQuality) {
+                return true;
+            }
+            if (newQuality < existingQuality) {
+                return false;
+            }
+            // Equal quality: prefer system-provided
+            return newIsSystemProvided && !existingIsSystemProvided;
+        }
+
+        // If only new has quality, prefer new (existing data is more valuable than new data)
+        if (newQuality != null && existingQuality == null) {
             return true;
         }
-        if (newQuality < existingQuality) {
+
+        // If only existing has quality, keep existing
+        if (newQuality == null && existingQuality != null) {
             return false;
         }
+
+        // Both null (new data scenario): prefer system-provided
         return newIsSystemProvided && !existingIsSystemProvided;
     }
 
     /**
-     * Internal record holding a mapping candidate with its target path.
-     * The target path is used for duplicate detection - mappings with the same target
-     * are considered duplicates.
+     * Internal record holding a mapping candidate with its identity.
+     * Deduplication among suggestions uses (source, target, script) triple.
+     * Deduplication against existing mappings uses target path only.
      */
-    private record Candidate(ItemPath targetPath, AttributeMappingsSuggestionType suggestion) {
+    private record Candidate(
+            MappingIdentity identity,
+            AttributeMappingsSuggestionType suggestion) {
     }
 }

@@ -864,8 +864,8 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
         modifyUserReplace(USER3.oid, UserType.F_FULL_NAME, PolyString.fromOrig("Bob Johnson"));
 
         modifyShadowReplace("user1", CN, "John Doe");
-        modifyShadowReplace("user2", CN, "Different Name");
-        modifyShadowReplace("user3", CN, "Another Name");
+        modifyShadowReplace("user2", CN, "Jane Smith");
+        modifyShadowReplace("user3", CN, "Bob Johnson");
 
         refreshShadows();
 
@@ -907,9 +907,8 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 .isTrue();
 
         assertThat(cnMapping.getExpectedQuality())
-                .as("System mapping with partial match should have lower quality (~0.33)")
-                .isLessThan(1.0f)
-                .isGreaterThan(0.0f);
+                .as("System mapping with perfect match should have quality 1.0")
+                .isEqualTo(1.0f);
     }
 
     @Test
@@ -1248,7 +1247,7 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
         modifyUserReplace(USER3.oid, ItemPath.create(UserType.F_PERSONAL_NUMBER), "33333");
 
         modifyShadowReplace("user1", PERSONAL_NUMBER, "xyz11111");
-        modifyShadowReplace("user2", PERSONAL_NUMBER, "xyz22222");
+        modifyShadowReplace("user2", PERSONAL_NUMBER, "22222");
         modifyShadowReplace("user3", PERSONAL_NUMBER, "33333");
 
         refreshShadows();
@@ -1279,7 +1278,7 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 .isNull();
         assertThat(mapping.getExpectedQuality())
                 .as("No assessment performed => null quality")
-                .isCloseTo(0.33F, Offset.offset(0.01F));
+                .isCloseTo(0.66F, Offset.offset(0.01F));
     }
 
     @Test
@@ -1554,6 +1553,46 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
         assertThat(mapping.getDefinition().getInbound().get(0).getExpression())
                 .as("Should contain stripDiacritics expression")
                 .isNotNull();
+    }
+
+    @Test
+    public void test062InboundBothSourceAndTargetEmpty() throws Exception {
+        Task task = getTestTask();
+        OperationResult result = task.getResult();
+
+        // Remove both source (shadow) and target (focus) personal numbers => both empty for inbound
+        modifyUserReplace(USER1.oid, ItemPath.create(UserType.F_PERSONAL_NUMBER));
+        modifyUserReplace(USER2.oid, ItemPath.create(UserType.F_PERSONAL_NUMBER));
+        modifyUserReplace(USER3.oid, ItemPath.create(UserType.F_PERSONAL_NUMBER));
+
+        modifyShadowReplace("user1", PERSONAL_NUMBER);
+        modifyShadowReplace("user2", PERSONAL_NUMBER);
+        modifyShadowReplace("user3", PERSONAL_NUMBER);
+
+        refreshShadows();
+
+        var mockClient = createClient(
+                List.of(ItemPath.create(UserType.F_PERSONAL_NUMBER)),
+                List.of(PERSONAL_NUMBER.path())
+        );
+        TestServiceClientFactory.mockServiceClient(clientFactoryMock, mockClient);
+        var ctx = TypeOperationContext.init(mockClient, RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, null, task, result);
+
+        var op = MappingsSuggestionOperation.init(
+                ctx,
+                new MappingsQualityAssessor(expressionFactory),
+                new OwnedShadowsProviderFromResource(),
+                wellKnownSchemaService,
+                heuristicRuleMatcher,
+                true,
+                true);
+
+        var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
+        MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
+
+        assertThat(suggestion.getAttributeMappings())
+                .as("Both source and target data missing should discard mapping, not suggest asIs")
+                .isEmpty();
     }
 
 }
