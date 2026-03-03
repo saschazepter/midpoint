@@ -6,28 +6,50 @@
 
 package com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.attribute.mapping;
 
-import java.util.*;
+import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.MappingUtils.createVirtualMappingContainerModel;
+import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.isSuggestionExists;
+import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadObjectTypeMappingTypeSuggestion;
+import static com.evolveum.midpoint.gui.impl.page.admin.simulation.SimulationsGuiUtil.loadSimulationResult;
+import static com.evolveum.midpoint.gui.impl.page.admin.simulation.wizard.ResourceSimulationTaskWizardPanel.getSimulationResultReference;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
+import org.apache.wicket.AttributeModifier;
+import org.apache.wicket.Component;
+import org.apache.wicket.ajax.AjaxRequestTarget;
+import org.apache.wicket.behavior.AttributeAppender;
+import org.apache.wicket.extensions.markup.html.tabs.ITab;
+import org.apache.wicket.markup.html.WebMarkupContainer;
+import org.apache.wicket.markup.repeater.RepeatingView;
+import org.apache.wicket.model.IModel;
+import org.apache.wicket.model.Model;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import com.evolveum.midpoint.gui.api.GuiStyleConstants;
 import com.evolveum.midpoint.gui.api.component.result.OpResult;
 import com.evolveum.midpoint.gui.api.component.tabs.IconPanelTab;
 import com.evolveum.midpoint.gui.api.model.LoadableModel;
 import com.evolveum.midpoint.gui.api.page.PageBase;
+import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerValueWrapper;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerWrapper;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismPropertyWrapper;
 import com.evolveum.midpoint.gui.api.util.MappingDirection;
 import com.evolveum.midpoint.gui.api.util.WebComponentUtil;
-import com.evolveum.midpoint.gui.impl.page.admin.resource.ResourceDetailsModel;
-
 import com.evolveum.midpoint.gui.impl.component.wizard.WizardPanelHelper;
-
+import com.evolveum.midpoint.gui.impl.page.admin.resource.ResourceDetailsModel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.AbstractResourceNavigationWizardBasicPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.component.SmartAlertGeneratingPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.dto.SmartGeneratingAlertDto;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.component.SimulationActionTaskButton;
 import com.evolveum.midpoint.prism.Containerable;
-
 import com.evolveum.midpoint.schema.processor.ResourceObjectTypeIdentification;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.smart.api.SmartIntegrationService;
@@ -39,12 +61,13 @@ import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.application.PanelDisplay;
 import com.evolveum.midpoint.web.application.PanelInstance;
 import com.evolveum.midpoint.web.application.PanelType;
-
+import com.evolveum.midpoint.web.component.AjaxIconButton;
 import com.evolveum.midpoint.web.component.TabSeparatedTabbedPanel;
 import com.evolveum.midpoint.web.component.TabbedPanel;
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsConfirmationPanel;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsPanel;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
 import com.evolveum.midpoint.web.component.util.SerializableBiConsumer;
 import com.evolveum.midpoint.web.component.util.SerializableConsumer;
 import com.evolveum.midpoint.web.component.util.SerializableSupplier;
@@ -53,32 +76,7 @@ import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavor;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavors;
 import com.evolveum.midpoint.web.session.SuggestionsStorage;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
-
 import com.evolveum.prism.xml.ns._public.types_3.ItemPathType;
-
-import org.apache.wicket.AttributeModifier;
-import org.apache.wicket.Component;
-import org.apache.wicket.ajax.AjaxRequestTarget;
-import org.apache.wicket.behavior.AttributeAppender;
-import org.apache.wicket.extensions.markup.html.tabs.ITab;
-import org.apache.wicket.markup.html.WebMarkupContainer;
-import org.apache.wicket.markup.repeater.RepeatingView;
-import org.apache.wicket.model.IModel;
-import org.apache.wicket.model.Model;
-
-import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerValueWrapper;
-import com.evolveum.midpoint.web.component.AjaxIconButton;
-
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.Unmodifiable;
-
-import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.MappingUtils.createVirtualMappingContainerModel;
-import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.*;
-import static com.evolveum.midpoint.gui.impl.page.admin.simulation.SimulationsGuiUtil.loadSimulationResult;
-import static com.evolveum.midpoint.gui.impl.page.admin.simulation.wizard.ResourceSimulationTaskWizardPanel.getSimulationResultReference;
-import static com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto.initDummyMappingPermissionData;
 
 /**
  * @author lskublik
@@ -294,15 +292,21 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
             @NotNull PageBase pageBase,
             @NotNull AjaxRequestTarget target,
             @NotNull SerializableBiConsumer<AjaxRequestTarget,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>>> action) {
-        final RequestDetailsRecordDto<DataAccessPermission> dataAccessPermissionRequestDetailsRecordDto =
-                new RequestDetailsRecordDto<>(null, initDummyMappingPermissionData());
-        RequestDetailsConfirmationPanel<DataAccessPermission> dialog = new RequestDetailsConfirmationPanel<>(
-                pageBase.getMainPopupBodyId(), () -> dataAccessPermissionRequestDetailsRecordDto) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>>> action) {
+        final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
+                ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                        .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                        .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                        .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                        .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                        .confirmationOptions(ConfirmationOption.mappingPermissionsOptions())
+                        .build();
+        ConfirmationWithOptionsPanel<DataAccessPermission> dialog = new ConfirmationWithOptionsPanel<>(
+                pageBase.getMainPopupBodyId(), () -> confirmationWithOptionsDto) {
 
             @Override
-            public void yesPerformed(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+            public void confirmationPerformed(AjaxRequestTarget target,
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 action.accept(target, confirmedOptions);
                 target.add(AttributeMappingsTableWizardPanel.this);
                 getTable().refreshAndDetach(target);
@@ -386,7 +390,7 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
                 () -> new SmartGeneratingAlertDto(loadSuggestion(resourceOid), getSwitchToggleModel(), getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 AttributeMappingsTableWizardPanel.this.performSuggestOperation(target, confirmedOptions.getObject());
             }
 
@@ -396,10 +400,16 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
             }
 
             @Override
-            protected @NotNull IModel<RequestDetailsRecordDto<DataAccessPermission>> getPermissionRecordDtoIModel() {
-                final RequestDetailsRecordDto<DataAccessPermission> optionsData = new RequestDetailsRecordDto<>(
-                        null, RequestDetailsRecordDto.initDummyMappingPermissionData());
-                return () -> optionsData;
+            protected @NotNull IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel() {
+                final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
+                        ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                                .confirmationOptions(ConfirmationOption.mappingPermissionsOptions())
+                                .build();
+                return () -> confirmationWithOptionsDto;
             }
 
             @Override
@@ -416,9 +426,9 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
     }
 
     protected void performSuggestOperation(AjaxRequestTarget target,
-            List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>> confirmedOptions) {
+            List<ConfirmationOption<DataAccessPermission>> confirmedOptions) {
         final List<DataAccessPermissionType> permissions = confirmedOptions.stream()
-                .map(RequestDetailsRecordDto.RequestRecord::option)
+                .map(ConfirmationOption::option)
                 .map(DataAccessPermission::toSchemaType)
                 .toList();
         ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();

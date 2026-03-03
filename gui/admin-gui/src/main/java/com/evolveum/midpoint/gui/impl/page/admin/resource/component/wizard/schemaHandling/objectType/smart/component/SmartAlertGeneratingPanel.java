@@ -15,9 +15,10 @@ import com.evolveum.midpoint.gui.api.page.PageBase;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.dto.SmartGeneratingAlertDto;
 import com.evolveum.midpoint.smart.api.info.StatusInfo;
 
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsConfirmationPanel;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsPanel;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AbstractAjaxTimerBehavior;
@@ -37,8 +38,6 @@ import com.evolveum.midpoint.web.component.AjaxIconButton;
 import com.evolveum.midpoint.web.component.util.SerializableBiConsumer;
 import com.evolveum.midpoint.web.component.util.SerializableConsumer;
 import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
-
-import static com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto.initDummyMappingPermissionData;
 
 /**
  * Panel for monitoring and controlling a "smart generating" task.
@@ -63,7 +62,7 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
     private static final Trace LOGGER = TraceManager.getTrace(SmartAlertGeneratingPanel.class);
 
     private AbstractAjaxTimerBehavior timerBehavior;
-    private IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions;
+    private IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions;
 
     public SmartAlertGeneratingPanel(String id, IModel<SmartGeneratingAlertDto> model) {
         super(id, model);
@@ -268,14 +267,14 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
             @NotNull PageBase pageBase,
             @NotNull AjaxRequestTarget target,
             @NotNull SerializableBiConsumer<AjaxRequestTarget,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>>> action) {
-        RequestDetailsConfirmationPanel<DataAccessPermission> dialog = new RequestDetailsConfirmationPanel<>(
+                    IModel<List<ConfirmationOption<DataAccessPermission>>>> action) {
+        ConfirmationWithOptionsPanel<DataAccessPermission> dialog = new ConfirmationWithOptionsPanel<>(
                 pageBase.getMainPopupBodyId(),
-                getPermissionRecordDtoIModel()) {
+                getConfirmationOptionsDataModel()) {
 
             @Override
-            public void yesPerformed(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+            public void confirmationPerformed(AjaxRequestTarget target,
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 SmartAlertGeneratingPanel.this.confirmedOptions = confirmedOptions;
                 action.accept(target, confirmedOptions);
                 target.add(SmartAlertGeneratingPanel.this);
@@ -284,12 +283,6 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
             }
         };
         pageBase.showMainPopup(dialog, target);
-    }
-
-    protected IModel<RequestDetailsRecordDto<DataAccessPermission>> getPermissionRecordDtoIModel() {
-        final RequestDetailsRecordDto<DataAccessPermission> dataAccessPermissionRequestDetailsRecordDto =
-                new RequestDetailsRecordDto<>(null, initDummyMappingPermissionData());
-        return Model.of(dataAccessPermissionRequestDetailsRecordDto);
     }
 
     /** Called when task finishes successfully. Default no-op. */
@@ -311,15 +304,17 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
 //TODO in some case we need to switch model to false "check it"
     /** Refreshes suggestions (removes existing task and starts again). */
     protected void performRefreshOperation(AjaxRequestTarget target,
-            IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
         getModelObject().removeExistingSuggestionTask(getPageBase());
         performSuggestOperation(target, confirmedOptions);
     }
 
     /** Must be implemented to trigger suggestion generation. */
     protected abstract void performSuggestOperation(AjaxRequestTarget target,
-            IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions);
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions);
 
     /** Must be implemented to refresh related UI components. */
     protected abstract void refreshAssociatedComponents(AjaxRequestTarget target);
+
+    protected abstract IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel();
 }

@@ -22,9 +22,10 @@ import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schem
 import com.evolveum.midpoint.prism.*;
 import com.evolveum.midpoint.util.exception.CommonException;
 import com.evolveum.midpoint.web.component.AjaxIconButton;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
 import com.evolveum.midpoint.web.component.dialog.ConfirmationPanel;
 
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
 import com.evolveum.midpoint.web.session.SuggestionsStorage;
 
 import org.apache.wicket.AttributeModifier;
@@ -64,7 +65,7 @@ import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.application.PanelDisplay;
 import com.evolveum.midpoint.web.application.PanelInstance;
 import com.evolveum.midpoint.web.application.PanelType;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavor;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavors;
@@ -306,7 +307,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                 () -> new SmartGeneratingAlertDto(loadExistingSuggestion(), switchToggleModel, getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();
                 SmartIntegrationService service = getPageBase().getSmartIntegrationService();
                 getPageBase().taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
@@ -318,10 +319,16 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
             }
 
             @Override
-            protected @NotNull IModel<RequestDetailsRecordDto<DataAccessPermission>> getPermissionRecordDtoIModel() {
-                final RequestDetailsRecordDto<DataAccessPermission> requestDetailsRecordDto =
-                        new RequestDetailsRecordDto<>(null, RequestDetailsRecordDto.initDummyCorrelationPermissionData());
-                return () -> requestDetailsRecordDto;
+            protected @NotNull IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel() {
+                final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
+                        ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                                .confirmationOptions(ConfirmationOption.correlationPermissionsOptions())
+                                .build();
+                return () -> confirmationWithOptionsDto;
             }
 
             @Override

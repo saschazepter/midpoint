@@ -38,8 +38,8 @@ import com.evolveum.midpoint.util.exception.SchemaException;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.component.data.column.ColumnMenuAction;
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
 import com.evolveum.midpoint.web.component.menu.cog.ButtonInlineMenuItem;
 import com.evolveum.midpoint.web.component.menu.cog.InlineMenuItem;
 import com.evolveum.midpoint.web.component.menu.cog.InlineMenuItemAction;
@@ -74,7 +74,7 @@ import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizar
 import static com.evolveum.midpoint.gui.impl.page.admin.simulation.SimulationsGuiUtil.loadSimulationResult;
 import static com.evolveum.midpoint.gui.impl.page.admin.simulation.wizard.ResourceSimulationTaskWizardPanel.getSimulationResultReference;
 import static com.evolveum.midpoint.gui.impl.util.StatusInfoTableUtil.*;
-import static com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto.initDummyCorrelationPermissionData;
+import static com.evolveum.midpoint.web.component.dialog.ConfirmationOption.correlationPermissionsOptions;
 
 /**
  * Multi-select tile table for correlation items.
@@ -105,10 +105,16 @@ public abstract class SmartCorrelationTable
     }
 
     @Override
-    protected IModel<RequestDetailsRecordDto<DataAccessPermission>> buildSmartPermissionRecordDto() {
-        final RequestDetailsRecordDto<DataAccessPermission> dataAccessPermissionRequestDetailsRecordDto =
-                new RequestDetailsRecordDto<>(null, initDummyCorrelationPermissionData());
-        return () -> dataAccessPermissionRequestDetailsRecordDto;
+    protected IModel<ConfirmationWithOptionsDto<DataAccessPermission>> buildSmartPermissionRecordDto() {
+        final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
+                ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                        .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                        .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                        .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                        .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                        .confirmationOptions(correlationPermissionsOptions())
+                        .build();
+        return () -> confirmationWithOptionsDto;
     }
 
     @Override

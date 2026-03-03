@@ -27,8 +27,9 @@ import com.evolveum.midpoint.smart.api.info.StatusInfo;
 import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.web.component.AjaxIconButton;
 import com.evolveum.midpoint.web.component.data.column.ColumnMenuAction;
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 import com.evolveum.midpoint.web.component.form.MidpointForm;
 import com.evolveum.midpoint.web.component.menu.cog.InlineMenuItem;
 import com.evolveum.midpoint.web.component.menu.cog.InlineMenuItemAction;
@@ -60,7 +61,6 @@ import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizar
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadObjectTypeSuggestions;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.*;
 import static com.evolveum.midpoint.gui.impl.util.StatusInfoTableUtil.*;
-import static com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto.initDummyObjectTypePermissionData;
 
 public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extends AbstractObjectMainPanel<ResourceType, ResourceDetailsModel> {
 
@@ -128,7 +128,7 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
                 () -> new SmartGeneratingAlertDto(null, Model.of(), getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 switchSuggestion.setObject(Boolean.TRUE);
                 onSuggestValue(createContainerModel(), target);
             }
@@ -139,10 +139,16 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
             }
 
             @Override
-            protected @NotNull IModel<RequestDetailsRecordDto<DataAccessPermission>> getPermissionRecordDtoIModel() {
-                final RequestDetailsRecordDto<DataAccessPermission> dataAccessPermissionRequestDetailsRecordDto =
-                        new RequestDetailsRecordDto<>(null, initDummyObjectTypePermissionData());
-                return () -> dataAccessPermissionRequestDetailsRecordDto;
+            protected @NotNull IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel() {
+                final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
+                        ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                                .confirmationOptions(ConfirmationOption.delineationPermissionsOptions())
+                                .build();
+                return () -> confirmationWithOptionsDto;
             }
 
             @Override

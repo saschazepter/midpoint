@@ -36,9 +36,10 @@ import com.evolveum.midpoint.web.application.PanelDisplay;
 import com.evolveum.midpoint.web.application.PanelInstance;
 import com.evolveum.midpoint.web.application.PanelType;
 import com.evolveum.midpoint.web.component.AjaxIconButton;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
 import com.evolveum.midpoint.web.component.dialog.ConfirmationPanel;
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 import com.evolveum.midpoint.web.component.util.SerializableConsumer;
 import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
 import com.evolveum.midpoint.web.model.PrismContainerWrapperModel;
@@ -364,7 +365,7 @@ public class AssociationTypesPanel extends SchemaHandlingObjectsPanel<ShadowAsso
                 () -> new SmartGeneratingAlertDto(loadSuggestion(getResourceOid()), switchToggleModel, getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 onSuggestValue(createContainerModel(), target);
             }
 
@@ -374,9 +375,16 @@ public class AssociationTypesPanel extends SchemaHandlingObjectsPanel<ShadowAsso
             }
 
             @Override
-            protected @NotNull IModel<RequestDetailsRecordDto<DataAccessPermission>> getPermissionRecordDtoIModel() {
-                return () -> new RequestDetailsRecordDto<>(null,
-                        RequestDetailsRecordDto.initDummyObjectTypePermissionData());
+            protected @NotNull IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel() {
+                final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsData =
+                        ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                                .confirmationOptions(ConfirmationOption.delineationPermissionsOptions())
+                                .build();
+                return () -> confirmationWithOptionsData;
             }
 
             @Override

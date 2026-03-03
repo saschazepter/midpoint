@@ -15,8 +15,9 @@ import com.evolveum.midpoint.gui.api.util.WebPrismUtil;
 import com.evolveum.midpoint.gui.impl.component.data.provider.MultivalueContainerListDataProvider;
 
 import com.evolveum.midpoint.gui.impl.component.data.provider.suggestion.StatusAwareDataProvider;
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.smart.api.info.StatusInfo;
 
@@ -50,7 +51,7 @@ import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerValueWrapper;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerWrapper;
 import com.evolveum.midpoint.gui.impl.component.icon.CompositedIconBuilder;
 import com.evolveum.midpoint.gui.impl.duplication.DuplicationProcessHelper;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsConfirmationPanel;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsPanel;
 import com.evolveum.midpoint.model.api.AssignmentObjectRelation;
 import com.evolveum.midpoint.prism.Containerable;
 import com.evolveum.midpoint.prism.PrismContainerValue;
@@ -543,13 +544,13 @@ public abstract class MultiSelectContainerActionTileTablePanel<E extends Seriali
 
             @Override
             public void onClick(AjaxRequestTarget target) {
-                RequestDetailsConfirmationPanel<DataAccessPermission> dialog =
-                        new RequestDetailsConfirmationPanel<>(getPageBase().getMainPopupBodyId(),
+                ConfirmationWithOptionsPanel<DataAccessPermission> dialog =
+                        new ConfirmationWithOptionsPanel<>(getPageBase().getMainPopupBodyId(),
                         buildSmartPermissionRecordDto()) {
 
                     @Override
-                    public void yesPerformed(AjaxRequestTarget target,
-                            IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                    public void confirmationPerformed(AjaxRequestTarget target,
+                            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                         onSuggestNewPerformed(target);
                     }
                 };
@@ -564,8 +565,16 @@ public abstract class MultiSelectContainerActionTileTablePanel<E extends Seriali
         return suggestObjectButton;
     }
 
-    protected IModel<RequestDetailsRecordDto<DataAccessPermission>> buildSmartPermissionRecordDto() {
-        return () -> new RequestDetailsRecordDto<>(null, null);
+    protected IModel<ConfirmationWithOptionsDto<DataAccessPermission>> buildSmartPermissionRecordDto() {
+        final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
+                ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                        .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                        .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                        .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                        .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                        .confirmationOptions(Collections.emptyList())
+                        .build();
+        return () -> confirmationWithOptionsDto;
     }
 
     @NotNull

@@ -18,9 +18,10 @@ import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.smart.api.info.StatusInfo;
 import com.evolveum.midpoint.task.api.Task;
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsConfirmationPanel;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsPanel;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
 import com.evolveum.midpoint.web.component.util.SerializableConsumer;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
@@ -28,7 +29,6 @@ import com.evolveum.midpoint.xml.ns._public.prism_schema_3.ComplexTypeDefinition
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.model.IModel;
-import org.apache.wicket.model.Model;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,7 +37,7 @@ import javax.xml.namespace.QName;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadObjectClassObjectTypeSuggestions;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.*;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationWrapperUtils.processSuggestedContainerValue;
-import static com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto.initDummyObjectTypePermissionData;
+import static com.evolveum.midpoint.web.component.dialog.ConfirmationOption.delineationPermissionsOptions;
 
 import java.util.List;
 
@@ -78,13 +78,20 @@ public class SmartObjectTypeSuggestionWizardPanel extends AbstractWizardPanel<Re
     }
 
     private void proceedToSuggestionConfirmationPanel(@NotNull PageBase pageBase, AjaxRequestTarget target, ComplexTypeDefinitionType complexTypeDef) {
-        RequestDetailsConfirmationPanel<DataAccessPermission> dialog = new RequestDetailsConfirmationPanel<>(
-                getPageBase().getMainPopupBodyId(),
-                Model.of(new RequestDetailsRecordDto<>(null, initDummyObjectTypePermissionData()))) {
+        final ConfirmationWithOptionsDto<DataAccessPermission> confirmationPanelConfig =
+                ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                        .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                        .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                        .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                        .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                        .confirmationOptions(ConfirmationOption.delineationPermissionsOptions())
+                        .build();
+        ConfirmationWithOptionsPanel<DataAccessPermission> dialog = new ConfirmationWithOptionsPanel<>(
+                getPageBase().getMainPopupBodyId(), () -> confirmationPanelConfig) {
 
             @Override
-            public void yesPerformed(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+            public void confirmationPerformed(AjaxRequestTarget target,
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 processSuggestionActivity(target, complexTypeDef.getName(), false, confirmedOptions);
             }
         };
@@ -95,7 +102,7 @@ public class SmartObjectTypeSuggestionWizardPanel extends AbstractWizardPanel<Re
      * Processes the suggestion activity for the given object class name.
      */
     private void processSuggestionActivity(AjaxRequestTarget target, QName objectClassName, boolean resetSuggestion,
-            IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
         String resourceOid = getAssignmentHolderModel().getObjectType().getOid();
         Task task = getPageBase().createSimpleTask(OP_DETERMINE_STATUS);
         OperationResult result = task.getResult();
@@ -216,8 +223,8 @@ public class SmartObjectTypeSuggestionWizardPanel extends AbstractWizardPanel<Re
             @Override
             public void refreshSuggestionPerform(AjaxRequestTarget target) {
                 removeLastBreadcrumb();
-                final List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>> requestRecords =
-                        initDummyObjectTypePermissionData();
+                final List<ConfirmationOption<DataAccessPermission>> requestRecords =
+                        delineationPermissionsOptions();
                 processSuggestionActivity(target, objectClassName, true,
                         () -> requestRecords);
             }
