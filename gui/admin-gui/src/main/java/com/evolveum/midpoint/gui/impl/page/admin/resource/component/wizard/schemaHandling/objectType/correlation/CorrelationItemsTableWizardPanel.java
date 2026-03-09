@@ -319,26 +319,20 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
             }
 
             @Override
-            protected @NotNull IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel() {
-                final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
-                        ConfirmationWithOptionsDto.<DataAccessPermission>builder()
-                                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
-                                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
-                                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
-                                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
-                                .confirmationOptions(ConfirmationOption.correlationPermissionsOptions())
-                                .build();
-                return () -> confirmationWithOptionsDto;
+            protected IModel<List<ConfirmationOption<DataAccessPermission>>> getConfirmationOptions() {
+                final List<ConfirmationOption<DataAccessPermission>> confirmationOptions =
+                        ConfirmationOption.correlationPermissionsOptions();
+                return () -> confirmationOptions;
             }
 
             @Override
-            protected void refreshAssociatedComponents(@NotNull AjaxRequestTarget target) {
+            protected void onRefresh(@NotNull AjaxRequestTarget target) {
                 SmartCorrelationTable smartMappingTable = getTable();
                 smartMappingTable.refreshAndDetach(target);
             }
 
             @Override
-            protected void onFinishActionPerform(AjaxRequestTarget target) {
+            protected void onSuggestionFinish(AjaxRequestTarget target) {
                 getTable().refreshAndDetach(target);
             }
         };

@@ -54,9 +54,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Serial;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import static com.evolveum.midpoint.gui.api.util.LocalizationUtil.translate;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadAssociationSuggestions;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadObjectTypeSuggestions;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.*;
@@ -129,31 +131,39 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
                     IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
-                switchSuggestion.setObject(Boolean.TRUE);
-                onSuggestValue(createContainerModel(), target);
+                // We override the generate button, so this method should not be called at all.
             }
 
             @Override
-            protected void onSuggestButtonClick(AjaxRequestTarget target) {
-                performSuggestOperation(target, null);
+            protected AjaxIconButton createGenerateButton(String buttonId) {
+                final AjaxIconButton generateButton = new AjaxIconButton(buttonId,
+                        () -> isSuggestionExists() ? "fa fa-arrows-rotate" : "mr-2 fa fa-wand-magic-sparkles",
+                        () -> isSuggestionExists()
+                                ? translate("SmartGeneratingPanel.button.ai.suggestions.refresh")
+                                : translate("SmartGeneratingPanel.button.ai.suggestions.suggest")) {
+
+                    @Override
+                    public void onClick(AjaxRequestTarget target) {
+                        switchSuggestion.setObject(Boolean.TRUE);
+                        onSuggestValue(createContainerModel(), target);
+                    }
+                };
+                generateButton.add(new VisibleBehaviour(() -> true));
+                generateButton.add(AttributeModifier.append("class", "bg-purple ml-auto"));
+                generateButton.setOutputMarkupId(true);
+                generateButton.showTitleAsLabel(true);
+                return generateButton;
             }
 
             @Override
-            protected @NotNull IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel() {
-                final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
-                        ConfirmationWithOptionsDto.<DataAccessPermission>builder()
-                                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
-                                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
-                                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
-                                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
-                                .confirmationOptions(ConfirmationOption.delineationPermissionsOptions())
-                                .build();
-                return () -> confirmationWithOptionsDto;
+            protected IModel<List<ConfirmationOption<DataAccessPermission>>> getConfirmationOptions() {
+                // We override the generate button, so this method should not be called at all.
+                return Collections::emptyList;
             }
 
             @Override
-            protected void refreshAssociatedComponents(@NotNull AjaxRequestTarget target) {
-                target.add(SchemaHandlingObjectsPanel.this);
+            protected void onRefresh(@NotNull AjaxRequestTarget target) {
+                // We override the generate button, so this method should not be called at all.
             }
         };
 

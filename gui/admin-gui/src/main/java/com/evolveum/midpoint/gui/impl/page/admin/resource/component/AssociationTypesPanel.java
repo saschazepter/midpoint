@@ -370,25 +370,19 @@ public class AssociationTypesPanel extends SchemaHandlingObjectsPanel<ShadowAsso
             }
 
             @Override
-            protected void onFinishActionPerform(AjaxRequestTarget target) {
+            protected void onSuggestionFinish(AjaxRequestTarget target) {
                 getTableComponent().refreshAndDetach(target);
             }
 
             @Override
-            protected @NotNull IModel<ConfirmationWithOptionsDto<DataAccessPermission>> getConfirmationOptionsDataModel() {
-                final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsData =
-                        ConfirmationWithOptionsDto.<DataAccessPermission>builder()
-                                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
-                                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
-                                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
-                                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
-                                .confirmationOptions(ConfirmationOption.delineationPermissionsOptions())
-                                .build();
-                return () -> confirmationWithOptionsData;
+            protected IModel<List<ConfirmationOption<DataAccessPermission>>> getConfirmationOptions() {
+                final List<ConfirmationOption<DataAccessPermission>> confirmationOptions =
+                        ConfirmationOption.delineationPermissionsOptions();
+                return () -> confirmationOptions;
             }
 
             @Override
-            protected void refreshAssociatedComponents(@NotNull AjaxRequestTarget target) {
+            protected void onRefresh(@NotNull AjaxRequestTarget target) {
                 AssociationTablePanel smartMappingTable = getTableComponent();
                 smartMappingTable.refreshAndDetach(target);
             }

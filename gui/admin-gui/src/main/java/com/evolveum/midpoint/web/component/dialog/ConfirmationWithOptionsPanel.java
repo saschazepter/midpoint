@@ -6,13 +6,8 @@
  */
 package com.evolveum.midpoint.web.component.dialog;
 
-import com.evolveum.midpoint.gui.api.GuiStyleConstants;
-import com.evolveum.midpoint.gui.api.component.BasePanel;
-import com.evolveum.midpoint.gui.api.component.result.MessagePanel;
-import com.evolveum.midpoint.web.component.AjaxButton;
-import com.evolveum.midpoint.web.component.AjaxIconButton;
-import com.evolveum.midpoint.web.component.util.Describable;
-import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
+import java.io.Serial;
+import java.util.List;
 
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
@@ -32,8 +27,13 @@ import org.apache.wicket.model.Model;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.Serial;
-import java.util.List;
+import com.evolveum.midpoint.gui.api.GuiStyleConstants;
+import com.evolveum.midpoint.gui.api.component.BasePanel;
+import com.evolveum.midpoint.gui.api.component.result.MessagePanel;
+import com.evolveum.midpoint.web.component.AjaxButton;
+import com.evolveum.midpoint.web.component.AjaxIconButton;
+import com.evolveum.midpoint.web.component.util.Describable;
+import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
 
 /**
  * Popup panel showing a confirmation message with optional confirmation options, info note, and "learn more" link.
@@ -107,6 +107,7 @@ public class ConfirmationWithOptionsPanel<T extends Describable> extends BasePan
 
             @Override
             public void onClick(AjaxRequestTarget target) {
+                getPageBase().hideMainPopup(target);
                 cancelPerformed(target);
             }
         };
@@ -114,9 +115,7 @@ public class ConfirmationWithOptionsPanel<T extends Describable> extends BasePan
         footer.add(cancelButton);
     }
 
-    protected void cancelPerformed(AjaxRequestTarget target) {
-        getPageBase().hideMainPopup(target);
-    }
+    protected void cancelPerformed(AjaxRequestTarget target) {}
 
     private void createConfirmationButton(@NotNull Fragment footer) {
         final ConfirmationWithOptionsDto<T> panelConfig = getModelObject();
@@ -137,8 +136,7 @@ public class ConfirmationWithOptionsPanel<T extends Describable> extends BasePan
     }
 
     protected void confirmationPerformed(AjaxRequestTarget target,
-            IModel<List<ConfirmationOption<T>>> confirmedOptions) {
-    }
+            IModel<List<ConfirmationOption<T>>> confirmedOptions) {}
 
     private void initInfoMessage() {
         final ConfirmationWithOptionsDto<T> panelConfig = getModelObject();
