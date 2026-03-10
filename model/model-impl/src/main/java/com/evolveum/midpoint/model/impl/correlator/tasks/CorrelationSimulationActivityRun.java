@@ -22,12 +22,18 @@ import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.delta.ObjectDelta;
 import com.evolveum.midpoint.prism.delta.builder.S_ItemEntry;
 import com.evolveum.midpoint.prism.equivalence.EquivalenceStrategy;
+import com.evolveum.midpoint.prism.util.CloneUtil;
 import com.evolveum.midpoint.provisioning.api.CorrelationSimulationData;
+import com.evolveum.midpoint.provisioning.api.ProvisioningService;
 import com.evolveum.midpoint.repo.common.activity.ActivityRunResultStatus;
 import com.evolveum.midpoint.repo.common.activity.run.ActivityRunException;
 import com.evolveum.midpoint.repo.common.activity.run.ActivityRunInstantiationContext;
 import com.evolveum.midpoint.repo.common.activity.run.SearchBasedActivityRun;
 import com.evolveum.midpoint.repo.common.activity.run.processing.ItemProcessingRequest;
+import com.evolveum.midpoint.schema.processor.ResourceObjectTypeDefinition;
+import com.evolveum.midpoint.schema.processor.ResourceObjectTypeIdentification;
+import com.evolveum.midpoint.schema.processor.ResourceSchemaExtender;
+import com.evolveum.midpoint.schema.processor.ResourceSchemaFactory;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.result.OperationResultStatus;
 import com.evolveum.midpoint.schema.util.ObjectTypeUtil;
@@ -46,15 +52,19 @@ public class CorrelationSimulationActivityRun
         extends SearchBasedActivityRun<ShadowType, CorrelationWorkDefinition, CorrelationSimulationActivityHandler, AbstractActivityWorkStateType> {
 
     private final CorrelationService correlationService;
+    private final ProvisioningService provisioningService;
     private final PrismContext prismContext;
     private CorrelationDefinitionType correlationDefinition;
     private List<AdditionalCorrelationItemMappingType> additionalMappings;
+    private ResourceType resource;
+    private ResourceObjectTypeDefinition objectTypeDefinition;
 
     public CorrelationSimulationActivityRun(
             ActivityRunInstantiationContext<CorrelationWorkDefinition, CorrelationSimulationActivityHandler> ctx,
-            CorrelationService correlationService, PrismContext prismContext) {
+            CorrelationService correlationService, ProvisioningService provisioningService, PrismContext prismContext) {
         super(ctx, "Correlation");
         this.correlationService = correlationService;
+        this.provisioningService = provisioningService;
         this.prismContext = prismContext;
         setInstanceReady();
     }
@@ -70,7 +80,32 @@ public class CorrelationSimulationActivityRun
         }
         this.correlationDefinition = getWorkDefinition().provideCorrelators(result);
         this.additionalMappings = getWorkDefinition().getAdditionalCorrelationMappings();
+        precomputeResourceSchemaAndContext(result);
         return true;
+    }
+
+    private void precomputeResourceSchemaAndContext(OperationResult result)
+            throws SchemaException, ConfigurationException, ObjectNotFoundException,
+            CommunicationException, SecurityViolationException, ExpressionEvaluationException {
+        final ResourceObjectSetType resourceObjectSet = getWorkDefinition().getResourceObjectSetSpecification();
+        final String resourceOid = resourceObjectSet.getResourceRef().getOid();
+        final ResourceObjectTypeIdentification objectTypeId = ResourceObjectTypeIdentification.of(
+                resourceObjectSet.getKind(), resourceObjectSet.getIntent());
+
+        this.resource = this.provisioningService.getObject(
+                ResourceType.class, resourceOid, null, getRunningTask(), result).asObjectable();
+
+        final ResourceSchemaExtender schemaExtender = ResourceSchemaFactory.schemaExtenderFor(this.resource);
+        for (AdditionalCorrelationItemMappingType additionalMapping : this.additionalMappings) {
+            final ResourceAttributeDefinitionType attrDef = new ResourceAttributeDefinitionType().ref(
+                    additionalMapping.getRef());
+            // Without the cloning it throws exception about resetting parent of a value.
+            CloneUtil.cloneMembersToCollection(attrDef.getInbound(), additionalMapping.getInbound());
+            schemaExtender.addAttributeDefinition(objectTypeId, attrDef);
+        }
+        this.objectTypeDefinition = schemaExtender.addCorrelationDefinition(objectTypeId, this.correlationDefinition)
+                .extend()
+                .getObjectTypeDefinitionRequired(objectTypeId);
     }
 
     @Override
@@ -79,7 +114,7 @@ public class CorrelationSimulationActivityRun
             throws SchemaException, ExpressionEvaluationException, CommunicationException, SecurityViolationException,
             ConfigurationException, ObjectNotFoundException {
         final CompleteCorrelationResult correlationResult = this.correlationService.correlate(shadow,
-                this.correlationDefinition, this.additionalMappings, task, result);
+                this.resource, this.objectTypeDefinition, this.correlationDefinition, task, result);
 
         final SimulationTransaction simulationTransaction = getSimulationTransaction();
         if (simulationTransaction != null) {

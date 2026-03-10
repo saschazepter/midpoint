@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import com.evolveum.midpoint.model.api.correlation.CorrelationCaseDescription.CandidateDescription;
 import com.evolveum.midpoint.prism.path.PathSet;
 import com.evolveum.midpoint.schema.CorrelatorDiscriminator;
+import com.evolveum.midpoint.schema.processor.ResourceObjectTypeDefinition;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.util.exception.*;
@@ -44,8 +45,9 @@ public interface CorrelationService {
 
     @NotNull CompleteCorrelationResult correlate(
             @NotNull ShadowType shadowedResourceObject,
+            @NotNull ResourceType resource,
+            @NotNull ResourceObjectTypeDefinition resourceObjectTypeDefinition,
             @NotNull CorrelationDefinitionType correlationDefinition,
-            List<AdditionalCorrelationItemMappingType> additionalAttributeMappings,
             @NotNull Task task,
             @NotNull OperationResult result)
             throws SchemaException, ExpressionEvaluationException, CommunicationException, SecurityViolationException,
