@@ -47,6 +47,7 @@ import com.evolveum.midpoint.gui.impl.page.admin.resource.ResourceDetailsModel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.AbstractResourceNavigationWizardBasicPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.component.SmartAlertGeneratingPanel;
+import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.component.SmartSuggestButtonWithConfirmation;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.dto.SmartGeneratingAlertDto;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.component.SimulationActionTaskButton;
 import com.evolveum.midpoint.prism.Containerable;
@@ -65,10 +66,8 @@ import com.evolveum.midpoint.web.component.AjaxIconButton;
 import com.evolveum.midpoint.web.component.TabSeparatedTabbedPanel;
 import com.evolveum.midpoint.web.component.TabbedPanel;
 import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
-import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
-import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsPanel;
 import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
-import com.evolveum.midpoint.web.component.util.SerializableBiConsumer;
+import com.evolveum.midpoint.web.component.input.ButtonWithConfirmationOptionsDialog;
 import com.evolveum.midpoint.web.component.util.SerializableConsumer;
 import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavor;
@@ -254,30 +253,42 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
 
                     @Override
                     protected void addAdditionalNoValueToolbarButtons(@NotNull List<Component> toolbarButtonsList, String idButton) {
-                        AjaxIconButton generateButton = new AjaxIconButton(idButton, new Model<>(GuiStyleConstants.CLASS_MAGIC_WAND),
-                                () -> isSuggestionExists(loadSuggestion(resourceOid).getObject())
-                                        ? createStringResource("Suggestion.button.showSuggest").getString()
-                                        : createStringResource("Suggestion.button.suggest").getString()) {
+                        AjaxIconButton generateButton = SmartSuggestButtonWithConfirmation.create(idButton,
+                                createStringResource("Suggestion.button.suggest"),
+                                () -> GuiStyleConstants.CLASS_MAGIC_WAND,
+                                ConfirmationOption.mappingPermissionsOptions(),
+                                () -> new ButtonWithConfirmationOptionsDialog.ButtonHandlers<>(target -> {},
+                                        (target, confirmedOptions) -> {
+                                            performSuggestOperation(target, confirmedOptions);
+                                            refreshAfterSuggestionOperationSubmitted(target);
+                                        }),
+                                getPageBase());
 
-                            @Override
-                            public void onClick(AjaxRequestTarget target) {
-                                if (isSuggestionExists(loadSuggestion(resourceOid).getObject())) {
-                                    getSwitchToggleModel().setObject(Boolean.TRUE);
-                                } else {
-                                    showSuggestConfirmDialog(getPageBase(), target, (atarget, permissions) ->
-                                            performSuggestOperation(atarget, permissions.getObject()));
-                                }
-
-                                target.add(AttributeMappingsTableWizardPanel.this);
-                                refreshAndDetach(target);
-                            }
-                        };
-                        generateButton.add(new VisibleBehaviour(this::displayNoValuePanel));
-                        generateButton.add(AttributeModifier.append("class", "mx-2 btn btn-default text-ai rounded"));
+                        generateButton.add(new VisibleBehaviour(() -> this.displayNoValuePanel()
+                                && !isSuggestionExists(loadSuggestion(resourceOid).getObject())));
                         generateButton.setOutputMarkupId(true);
                         generateButton.showTitleAsLabel(true);
 
                         toolbarButtonsList.add(generateButton);
+
+                        AjaxIconButton showSuggestionsButton = new AjaxIconButton(idButton,
+                                () -> GuiStyleConstants.CLASS_MAGIC_WAND,
+                                () -> createStringResource("Suggestion.button.showSuggest").getString()) {
+
+                            @Override
+                            public void onClick(AjaxRequestTarget target) {
+                                getSwitchToggleModel().setObject(Boolean.TRUE);
+                                target.add(AttributeMappingsTableWizardPanel.this);
+                                refreshAndDetach(target);
+                            }
+                        };
+                        showSuggestionsButton.add(new VisibleBehaviour(() -> displayNoValuePanel()
+                                && isSuggestionExists(loadSuggestion(resourceOid).getObject())));
+                        showSuggestionsButton.add(AttributeModifier.append("class", "mx-2 btn rounded bg-purple"));
+                        showSuggestionsButton.setOutputMarkupId(true);
+                        showSuggestionsButton.showTitleAsLabel(true);
+
+                        toolbarButtonsList.add(showSuggestionsButton);
                     }
                 };
 
@@ -285,26 +296,6 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
         columnTileTable.add(AttributeAppender.append("class", "p-0"));
 
         return columnTileTable;
-    }
-
-    private void showSuggestConfirmDialog(
-            @NotNull PageBase pageBase,
-            @NotNull AjaxRequestTarget target,
-            @NotNull SerializableBiConsumer<AjaxRequestTarget,
-                    IModel<List<ConfirmationOption<DataAccessPermission>>>> action) {
-        ConfirmationWithOptionsPanel<DataAccessPermission> dialog = new ConfirmationWithOptionsPanel<>(
-                pageBase.getMainPopupBodyId(), this::mappingsConfirmationPanelConfig) {
-
-            @Override
-            public void confirmationPerformed(AjaxRequestTarget target,
-                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
-                action.accept(target, confirmedOptions);
-                target.add(AttributeMappingsTableWizardPanel.this);
-                getTable().refreshAndDetach(target);
-                restartTime.accept(target);
-            }
-        };
-        pageBase.showMainPopup(dialog, target);
     }
 
     private @NotNull @Unmodifiable List<ItemPathType> getTargetPathsToIgnore() {
@@ -382,7 +373,8 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
                     IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
-                AttributeMappingsTableWizardPanel.this.performSuggestOperation(target, confirmedOptions.getObject());
+                AttributeMappingsTableWizardPanel.this.performSuggestOperation(target, confirmedOptions);
+                refreshAfterSuggestionOperationSubmitted(target);
             }
 
             @Override
@@ -410,19 +402,9 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
         return aiPanel;
     }
 
-    private @NotNull ConfirmationWithOptionsDto<DataAccessPermission> mappingsConfirmationPanelConfig() {
-        return ConfirmationWithOptionsDto.<DataAccessPermission>builder()
-                .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
-                .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
-                .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
-                .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
-                .confirmationOptions(ConfirmationOption.mappingPermissionsOptions())
-                .build();
-    }
-
-    protected void performSuggestOperation(AjaxRequestTarget target,
-            List<ConfirmationOption<DataAccessPermission>> confirmedOptions) {
-        final List<DataAccessPermissionType> permissions = confirmedOptions.stream()
+    private void performSuggestOperation(AjaxRequestTarget target,
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+        final List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
                 .map(ConfirmationOption::option)
                 .map(DataAccessPermission::toSchemaType)
                 .toList();
@@ -450,8 +432,13 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
                             result);
                 });
 
+    }
+
+    private void refreshAfterSuggestionOperationSubmitted(AjaxRequestTarget target) {
         getSwitchToggleModel().setObject(Boolean.TRUE);
+        target.add(AttributeMappingsTableWizardPanel.this);
         getTable().refreshAndDetach(target);
+        restartTime.accept(target);
     }
 
     private String getResourceOid() {

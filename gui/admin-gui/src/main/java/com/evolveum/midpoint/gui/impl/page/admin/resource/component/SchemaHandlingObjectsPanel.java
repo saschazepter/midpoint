@@ -136,6 +136,8 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
 
             @Override
             protected AjaxIconButton createGenerateButton(String buttonId) {
+                // We override this button, because we want to redirect to suggestion page without any confirmation
+                // dialog.
                 final AjaxIconButton generateButton = new AjaxIconButton(buttonId,
                         () -> isSuggestionExists() ? "fa fa-arrows-rotate" : "mr-2 fa fa-wand-magic-sparkles",
                         () -> isSuggestionExists()

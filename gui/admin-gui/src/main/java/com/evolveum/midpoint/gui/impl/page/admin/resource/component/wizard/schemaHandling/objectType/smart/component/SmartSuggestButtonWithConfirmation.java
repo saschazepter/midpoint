@@ -9,6 +9,7 @@ package com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.sche
 
 import java.util.List;
 
+import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.model.IModel;
 
 import com.evolveum.midpoint.gui.api.page.PageBase;
@@ -40,6 +41,10 @@ public class SmartSuggestButtonWithConfirmation<T extends Describable> extends B
                         .build();
         final ButtonConfig<DataAccessPermission> buttonConfig = new ButtonConfig<>(
                 icon, title, () -> confirmationDialogConfig, () -> pageBase);
-        return new SmartSuggestButtonWithConfirmation<>(id, () -> buttonConfig, clickHandlers);
+
+        final SmartSuggestButtonWithConfirmation<DataAccessPermission> button =
+                new SmartSuggestButtonWithConfirmation<>(id, () -> buttonConfig, clickHandlers);
+        button.add(AttributeModifier.append("class", "mx-2 btn rounded bg-purple"));
+        return button;
     }
 }

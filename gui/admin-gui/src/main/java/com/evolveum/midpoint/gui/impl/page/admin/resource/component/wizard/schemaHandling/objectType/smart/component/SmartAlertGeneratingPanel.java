@@ -61,7 +61,6 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
     private static final Trace LOGGER = TraceManager.getTrace(SmartAlertGeneratingPanel.class);
 
     private AbstractAjaxTimerBehavior timerBehavior;
-    private IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions;
 
     public SmartAlertGeneratingPanel(String id, IModel<SmartGeneratingAlertDto> model) {
         super(id, model);
@@ -251,7 +250,7 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
                                 ? this::generatePerformed
                                 : this::regeneratePerformed),
                 getPageBase());
-        suggestButton.add(AttributeModifier.append("class", "bg-purple ml-auto"));
+        suggestButton.add(AttributeModifier.append("class", "ml-auto"));
         suggestButton.showTitleAsLabel(true);
         suggestButton.add(new VisibleBehaviour(() -> getModelObject().isSuggestionButtonVisible()
                 || getModelObject().isRefreshButtonVisible()));
