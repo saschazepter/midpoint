@@ -186,7 +186,8 @@ public class SmartIntegrationUtils {
             @NotNull QName objectClassName,
             @NotNull AjaxRequestTarget target,
             @NotNull String operationName,
-            @NotNull Task task) {
+            @NotNull Task task,
+            @NotNull List<DataAccessPermissionType> permissions) {
         OperationResult opResult = task.getResult();
         StatusInfo<ObjectTypesSuggestionType> suggestions = loadObjectClassObjectTypeSuggestions(
                 pageBase, resourceOid, objectClassName, task, opResult);
@@ -210,7 +211,7 @@ public class SmartIntegrationUtils {
                             .withHideInProgress(true))
                     .runVoid((activityTask, activityResult) -> {
                         var oid = pageBase.getSmartIntegrationService().submitSuggestObjectTypesOperation(
-                                resourceOid, objectClassName, activityTask, activityResult);
+                                resourceOid, objectClassName, permissions, activityTask, activityResult);
                         activityResult.setBackgroundTaskOid(oid);
                     });
         }

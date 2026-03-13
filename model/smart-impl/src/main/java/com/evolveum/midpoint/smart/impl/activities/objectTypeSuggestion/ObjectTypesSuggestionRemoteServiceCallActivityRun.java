@@ -17,14 +17,14 @@ import com.evolveum.midpoint.repo.common.activity.run.ActivityRunResult;
 import com.evolveum.midpoint.repo.common.activity.run.LocalActivityRun;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.ShadowObjectClassStatisticsTypeUtil;
+import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
 import com.evolveum.midpoint.smart.impl.SmartIntegrationBeans;
 import com.evolveum.midpoint.smart.impl.activities.Util;
 import com.evolveum.midpoint.util.MiscUtil;
 import com.evolveum.midpoint.util.exception.CommonException;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.GenericObjectType;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectTypesSuggestionWorkStateType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
 /**
  * Calls the remote service to provide object types suggestions for a given object class.
@@ -51,22 +51,32 @@ class ObjectTypesSuggestionRemoteServiceCallActivityRun
         var parentState = Util.getParentState(this, result);
         var resourceOid = getWorkDefinition().getResourceOid();
         var objectClassName = getWorkDefinition().getObjectClassName();
-        var statisticsOid =
-                MiscUtil.stateNonNull(
-                        Referencable.getOid(parentState.getWorkStateReferenceRealValue(
-                                ObjectTypesSuggestionWorkStateType.F_STATISTICS_REF)),
-                        "Statistics object reference is not set in the work state in %s", task);
 
-        LOGGER.debug("Going to suggest object types for resource {} and object class {}; statistics in: {}",
-                resourceOid, objectClassName, statisticsOid);
-        var statistics = ShadowObjectClassStatisticsTypeUtil.getStatisticsRequired(
-                getBeans().repositoryService.getObject(GenericObjectType.class, statisticsOid, null, result));
-        var suggestedTypes = SmartIntegrationBeans.get().smartIntegrationService.suggestObjectTypes(
-                resourceOid, objectClassName, statistics, task, result);
+        boolean useAi = getWorkDefinition().getPermissions().contains(DataAccessPermissionType.STATISTICS_ACCESS);
+        ObjectTypesSuggestionType suggestedTypes;
+
+        if (useAi) {
+            var statisticsOid = MiscUtil.stateNonNull(
+                    Referencable.getOid(parentState.getWorkStateReferenceRealValue(
+                            ObjectTypesSuggestionWorkStateType.F_STATISTICS_REF)),
+                    "Statistics object reference is not set in the work state in %s", task);
+            LOGGER.debug("Going to suggest object types for resource {} and object class {}; statistics in: {}",
+                    resourceOid, objectClassName, statisticsOid);
+
+            var statistics = ShadowObjectClassStatisticsTypeUtil.getStatisticsRequired(
+                    getBeans().repositoryService.getObject(GenericObjectType.class, statisticsOid, null, result));
+            suggestedTypes = SmartIntegrationBeans.get().smartIntegrationService.suggestObjectTypes(
+                    resourceOid, objectClassName, statistics, task, result);
+            LOGGER.debug("AI-based suggestions written to the work state:\n{}",
+                    suggestedTypes.debugDump(1));
+        } else {
+            LOGGER.debug("Cannot suggest object types for resource {} and object class {}: {} permission not granted",
+                    resourceOid, objectClassName, DataAccessPermissionType.STATISTICS_ACCESS);
+            suggestedTypes = new ObjectTypesSuggestionType();
+        }
+
         parentState.setWorkStateItemRealValues(ObjectTypesSuggestionWorkStateType.F_RESULT, suggestedTypes);
         parentState.flushPendingTaskModifications(result);
-        LOGGER.debug("Suggestions written to the work state:\n{}",
-                suggestedTypes.debugDump(1));
 
         return ActivityRunResult.success();
     }

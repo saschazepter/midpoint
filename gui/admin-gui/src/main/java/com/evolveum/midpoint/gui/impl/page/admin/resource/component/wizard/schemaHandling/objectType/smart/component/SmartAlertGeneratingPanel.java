@@ -189,15 +189,8 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
     }
 
     private void onRefreshButtonClick(AjaxRequestTarget target) {
-        if (this.confirmedOptions == null) {
-            showSuggestConfirmDialog(getPageBase(), target,
-                    (target1, target2) -> performRefreshOperation(target1, this.confirmedOptions));
-        } else {
-            performRefreshOperation(target, this.confirmedOptions);
-            target.add(SmartAlertGeneratingPanel.this);
-            refreshAssociatedComponents(target);
-            restartTimeBehavior(target);
-        }
+        showSuggestConfirmDialog(getPageBase(), target,
+                (target1, confirmedOptions) -> performRefreshOperation(target1, confirmedOptions));
     }
 
     /** Restarts the polling timer if it exists. */

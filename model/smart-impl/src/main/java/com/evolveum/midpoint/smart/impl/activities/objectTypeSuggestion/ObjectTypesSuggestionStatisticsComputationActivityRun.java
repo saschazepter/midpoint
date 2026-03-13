@@ -17,10 +17,12 @@ import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.ObjectTypeUtil;
 import com.evolveum.midpoint.smart.impl.activities.AbstractObjectClassStatisticsComputationActivityRun;
 import com.evolveum.midpoint.smart.impl.activities.Util;
+import com.evolveum.midpoint.util.exception.CommonException;
 import com.evolveum.midpoint.util.exception.ObjectNotFoundException;
 import com.evolveum.midpoint.util.exception.SchemaException;
+import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectTypesSuggestionWorkStateType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
 /**
  * Activity run responsible for providing statistics used for object type suggestions.
@@ -39,10 +41,24 @@ public class ObjectTypesSuggestionStatisticsComputationActivityRun
                         ObjectTypesSuggestionActivityHandler,
                                 ObjectTypesSuggestionWorkStateType> {
 
+    private static final Trace LOGGER = TraceManager.getTrace(ObjectTypesSuggestionStatisticsComputationActivityRun.class);
+
     ObjectTypesSuggestionStatisticsComputationActivityRun(
             ActivityRunInstantiationContext<ObjectTypesSuggestionWorkDefinition, ObjectTypesSuggestionActivityHandler> context,
             String shortNameCapitalized) {
-        super(context, shortNameCapitalized, TraceManager.getTrace(ObjectTypesSuggestionStatisticsComputationActivityRun.class));
+        super(context, shortNameCapitalized, LOGGER);
+    }
+
+    @Override
+    public boolean beforeRun(OperationResult result) throws ActivityRunException, CommonException {
+        // Skip statistics computation if STATISTICS_ACCESS permission is not granted
+        boolean useAi = getWorkDefinition().getPermissions().contains(DataAccessPermissionType.STATISTICS_ACCESS);
+        if (!useAi) {
+            LOGGER.debug("Skipping statistics computation: {} permission not granted",
+                    DataAccessPermissionType.STATISTICS_ACCESS);
+            return false;
+        }
+        return super.beforeRun(result);
     }
 
     @Override

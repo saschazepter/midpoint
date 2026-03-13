@@ -23,8 +23,7 @@ import com.evolveum.midpoint.util.exception.ObjectNotFoundException;
 import com.evolveum.midpoint.util.exception.SchemaException;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.CorrelationSuggestionWorkStateType;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.SchemaMatchResultType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -65,8 +64,9 @@ public class CorrelationSuggestionSchemaMatchingActivityRun extends LocalActivit
         var resourceOid = workDef.getResourceOid();
         var typeIdentification = workDef.getTypeIdentification();
 
+        boolean useAi = workDef.getPermissions().contains(DataAccessPermissionType.SCHEMA_ACCESS);
         SchemaMatchResultType match = SmartIntegrationBeans.get().smartIntegrationService
-                .computeSchemaMatch(resourceOid, typeIdentification, true, getRunningTask(), result);
+                .computeSchemaMatch(resourceOid, typeIdentification, useAi, getRunningTask(), result);
 
         var parentState = Util.getParentState(this, result);
         parentState.setWorkStateItemRealValues(CorrelationSuggestionWorkStateType.F_SCHEMA_MATCH, match);

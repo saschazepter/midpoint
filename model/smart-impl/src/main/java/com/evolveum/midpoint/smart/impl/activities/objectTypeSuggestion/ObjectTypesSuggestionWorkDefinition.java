@@ -10,6 +10,7 @@ package com.evolveum.midpoint.smart.impl.activities.objectTypeSuggestion;
 
 import static com.evolveum.midpoint.util.MiscUtil.configNonNull;
 
+import java.util.List;
 import javax.xml.namespace.QName;
 
 import org.jetbrains.annotations.NotNull;
@@ -21,16 +22,14 @@ import com.evolveum.midpoint.repo.common.activity.definition.AffectedObjectsInfo
 import com.evolveum.midpoint.repo.common.activity.definition.WorkDefinitionFactory;
 import com.evolveum.midpoint.util.DebugUtil;
 import com.evolveum.midpoint.util.exception.ConfigurationException;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractActivityWorkStateType;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.BasicResourceObjectSetType;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectTypesSuggestionWorkDefinitionType;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.ResourceType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
 public class ObjectTypesSuggestionWorkDefinition extends AbstractWorkDefinition {
 
     private final String resourceOid;
     private final QName objectClassName;
     @Nullable private final String statisticsObjectOid;
+    private final List<DataAccessPermissionType> permissions;
 
     ObjectTypesSuggestionWorkDefinition(@NotNull WorkDefinitionFactory.WorkDefinitionInfo info) throws ConfigurationException {
         super(info);
@@ -39,6 +38,7 @@ public class ObjectTypesSuggestionWorkDefinition extends AbstractWorkDefinition 
         resourceOid = configNonNull(Referencable.getOid(typedDefinition.getResourceRef()), "No resource OID specified");
         objectClassName = configNonNull(typedDefinition.getObjectclass(), "No object class name specified");
         statisticsObjectOid = Referencable.getOid(typedDefinition.getStatisticsRef());
+        this.permissions = typedDefinition.getPermissions();
     }
 
     public String getResourceOid() {
@@ -51,6 +51,10 @@ public class ObjectTypesSuggestionWorkDefinition extends AbstractWorkDefinition 
 
     public @Nullable String getStatisticsObjectOid() {
         return statisticsObjectOid;
+    }
+
+    public List<DataAccessPermissionType> getPermissions() {
+        return this.permissions;
     }
 
     @Override

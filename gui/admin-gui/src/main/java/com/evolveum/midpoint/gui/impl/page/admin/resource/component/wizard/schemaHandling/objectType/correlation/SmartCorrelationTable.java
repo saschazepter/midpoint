@@ -39,6 +39,7 @@ import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.component.data.column.ColumnMenuAction;
 import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
+import com.evolveum.midpoint.web.component.dialog.RequestDetailsConfirmationPanel;
 import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
 import com.evolveum.midpoint.web.component.menu.cog.ButtonInlineMenuItem;
 import com.evolveum.midpoint.web.component.menu.cog.InlineMenuItem;
@@ -67,6 +68,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Serial;
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.*;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.*;
@@ -518,15 +520,35 @@ public abstract class SmartCorrelationTable
         getSwitchToggleModel().setObject(Boolean.TRUE);
         PageBase pageBase = getPageBase();
         ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();
-        SmartIntegrationService service = pageBase.getSmartIntegrationService();
-        pageBase.taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
-                .withOpResultOptions(OpResult.Options.create()
-                        .withHideSuccess(true)
-                        .withHideInProgress(true))
-                .runVoid((task, result) -> {
-                    service.submitSuggestCorrelationOperation(getResourceOid(), objectTypeIdentification, task, result);
-                    refreshAndDetach(target);
-                });
+
+        // Show permission dialog
+        RequestDetailsConfirmationPanel<DataAccessPermission> dialog = new RequestDetailsConfirmationPanel<>(
+                pageBase.getMainPopupBodyId(),
+                Model.of(new RequestDetailsRecordDto<>(
+                        null, RequestDetailsRecordDto.initDummyCorrelationPermissionData()))) {
+
+            @Override
+            public void yesPerformed(AjaxRequestTarget target,
+                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                // Extract permissions from confirmed options
+                List<DataAccessPermissionType> permissions =
+                        confirmedOptions.getObject().stream()
+                        .filter(RequestDetailsRecordDto.RequestRecord::isSelected)
+                        .map(record -> record.option().toSchemaType())
+                        .collect(Collectors.toList());
+
+                SmartIntegrationService service = pageBase.getSmartIntegrationService();
+                pageBase.taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
+                        .withOpResultOptions(OpResult.Options.create()
+                                .withHideSuccess(true)
+                                .withHideInProgress(true))
+                        .runVoid((task, result) -> {
+                            service.submitSuggestCorrelationOperation(getResourceOid(), objectTypeIdentification, permissions, task, result);
+                            refreshAndDetach(target);
+                        });
+            }
+        };
+        pageBase.showMainPopup(dialog, target);
     }
 
     @Override

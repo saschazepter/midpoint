@@ -15,6 +15,7 @@ import static com.evolveum.midpoint.web.session.UserProfileStorage.TableId.TABLE
 
 import java.io.Serial;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.evolveum.midpoint.gui.api.GuiStyleConstants;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismObjectWrapper;
@@ -307,6 +308,12 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
                     IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                // Extract permissions from confirmed options
+                List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
+                        .filter(RequestDetailsRecordDto.RequestRecord::isSelected)
+                        .map(record -> record.option().toSchemaType())
+                        .collect(Collectors.toList());
+
                 ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();
                 SmartIntegrationService service = getPageBase().getSmartIntegrationService();
                 getPageBase().taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
@@ -314,7 +321,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                                 .withHideSuccess(true)
                                 .withHideInProgress(true))
                         .runVoid((task, result) -> service
-                                .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, task, result));
+                                .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, permissions, task, result));
             }
 
             @Override

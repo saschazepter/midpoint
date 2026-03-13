@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.xml.namespace.QName;
+import java.util.stream.Collectors;
 
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadObjectClassObjectTypeSuggestions;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.*;
@@ -116,15 +117,14 @@ public class SmartObjectTypeSuggestionWizardPanel extends AbstractWizardPanel<Re
             return;
         }
 
-        if (confirmedOptions.getObject().size() != 2) {
-            result.recordFatalError("Unable to suggest object types without permissions to access schema and "
-                    + "statistics");
-            getPageBase().showResult(result);
-            target.add(getPageBase().getFeedbackPanel(), SmartObjectTypeSuggestionWizardPanel.this);
-            return;
-        }
+        // Extract permissions from confirmed options
+        List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
+                .filter(RequestDetailsRecordDto.RequestRecord::isSelected)
+                .map(record -> record.option().toSchemaType())
+                .collect(Collectors.toList());
+
         boolean executed = runSuggestionAction(
-                getPageBase(), resourceOid, objectClassName, target, OP_DEFINE_TYPES, task);
+                getPageBase(), resourceOid, objectClassName, target, OP_DEFINE_TYPES, task, permissions);
 
         result.computeStatusIfUnknown();
 
@@ -216,10 +216,17 @@ public class SmartObjectTypeSuggestionWizardPanel extends AbstractWizardPanel<Re
             @Override
             public void refreshSuggestionPerform(AjaxRequestTarget target) {
                 removeLastBreadcrumb();
-                final List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>> requestRecords =
-                        initDummyObjectTypePermissionData();
-                processSuggestionActivity(target, objectClassName, true,
-                        () -> requestRecords);
+                RequestDetailsConfirmationPanel<DataAccessPermission> dialog = new RequestDetailsConfirmationPanel<>(
+                        getPageBase().getMainPopupBodyId(),
+                        Model.of(new RequestDetailsRecordDto<>(null, initDummyObjectTypePermissionData()))) {
+
+                    @Override
+                    public void yesPerformed(AjaxRequestTarget target,
+                            IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
+                        processSuggestionActivity(target, objectClassName, true, confirmedOptions);
+                    }
+                };
+                getPageBase().showMainPopup(dialog, target);
             }
 
             @Override

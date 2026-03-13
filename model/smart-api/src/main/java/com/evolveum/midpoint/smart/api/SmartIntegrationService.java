@@ -133,7 +133,12 @@ public interface SmartIntegrationService {
             ConfigurationException, ObjectNotFoundException;
 
     /** Submits "suggest object types" request. Returns a token used to query the status. */
-    String submitSuggestObjectTypesOperation(String resourceOid, QName objectClassName, Task task, OperationResult result)
+    String submitSuggestObjectTypesOperation(
+            String resourceOid,
+            QName objectClassName,
+            List<DataAccessPermissionType> permissions,
+            Task task,
+            OperationResult result)
             throws CommonException;
 
     /**
@@ -216,7 +221,11 @@ public interface SmartIntegrationService {
      * Interaction metadata will be added later.
      */
     String submitSuggestCorrelationOperation(
-            String resourceOid, ResourceObjectTypeIdentification typeIdentification, Task task, OperationResult result)
+            String resourceOid,
+            ResourceObjectTypeIdentification typeIdentification,
+            List<DataAccessPermissionType> permissions,
+            Task task,
+            OperationResult result)
             throws CommonException;
 
     /**

@@ -165,7 +165,9 @@ public class TestSmartIntegrationService extends AbstractEmptyModelIntegrationTe
 
         when("submitting 'suggest object types' operation request");
         var token = smartIntegrationService.submitSuggestObjectTypesOperation(
-                RESOURCE_DUMMY_FOR_SUGGEST_OBJECT_TYPES.oid, OC_ACCOUNT_QNAME, task, result);
+                RESOURCE_DUMMY_FOR_SUGGEST_OBJECT_TYPES.oid, OC_ACCOUNT_QNAME,
+                List.of(DataAccessPermissionType.SCHEMA_ACCESS, DataAccessPermissionType.STATISTICS_ACCESS),
+                task, result);
 
         then("returned token is not null");
         assertThat(token).isNotNull();
@@ -219,7 +221,9 @@ public class TestSmartIntegrationService extends AbstractEmptyModelIntegrationTe
 
         when("submitting 'suggest object types' operation request");
         var token = smartIntegrationService.submitSuggestObjectTypesOperation(
-                RESOURCE_DUMMY_FOR_SUGGEST_OBJECT_TYPES.oid, OC_ACCOUNT_QNAME, task, result);
+                RESOURCE_DUMMY_FOR_SUGGEST_OBJECT_TYPES.oid, OC_ACCOUNT_QNAME,
+                List.of(DataAccessPermissionType.SCHEMA_ACCESS, DataAccessPermissionType.STATISTICS_ACCESS),
+                task, result);
 
         then("returned token is not null");
         assertThat(token).isNotNull();
@@ -301,7 +305,9 @@ public class TestSmartIntegrationService extends AbstractEmptyModelIntegrationTe
 
         when("submitting 'suggest correlation' operation request");
         var token = smartIntegrationService.submitSuggestCorrelationOperation(
-                RESOURCE_DUMMY_FOR_SUGGEST_CORRELATION_AND_MAPPINGS.oid, ACCOUNT_DEFAULT, task, result);
+                RESOURCE_DUMMY_FOR_SUGGEST_CORRELATION_AND_MAPPINGS.oid, ACCOUNT_DEFAULT,
+                List.of(DataAccessPermissionType.SCHEMA_ACCESS),
+                task, result);
 
         then("returned token is not null");
         assertThat(token).isNotNull();
