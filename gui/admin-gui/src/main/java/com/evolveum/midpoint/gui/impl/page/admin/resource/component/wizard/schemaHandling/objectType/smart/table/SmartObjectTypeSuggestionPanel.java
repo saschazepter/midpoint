@@ -513,8 +513,7 @@ public abstract class SmartObjectTypeSuggestionPanel<C extends PrismContainerVal
 
         @Override
         public IModel<String> title() {
-            return createStringResource("RequestDetailsConfirmationPanel.request.details.option"
-                    + ".hide.title");
+            return createStringResource("RequestDetailsConfirmationPanel.request.details.option.hide.title");
         }
 
         @Override

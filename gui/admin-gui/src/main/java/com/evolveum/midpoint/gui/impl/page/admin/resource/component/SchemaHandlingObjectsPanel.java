@@ -345,7 +345,7 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
                     }
                 };
                 generateButton.add(new VisibleBehaviour(this::displayNoValuePanel));
-                generateButton.add(AttributeModifier.append("class", "btn btn-default btn-sm text-ai"));
+                generateButton.add(AttributeModifier.append("class", "btn bg-purple btn-sm"));
                 generateButton.setOutputMarkupId(true);
                 generateButton.showTitleAsLabel(true);
 

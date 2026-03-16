@@ -37,7 +37,6 @@ import javax.xml.namespace.QName;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadObjectClassObjectTypeSuggestions;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.*;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationWrapperUtils.processSuggestedContainerValue;
-import static com.evolveum.midpoint.web.component.dialog.ConfirmationOption.delineationPermissionsOptions;
 
 import java.util.List;
 
@@ -221,12 +220,10 @@ public class SmartObjectTypeSuggestionWizardPanel extends AbstractWizardPanel<Re
             }
 
             @Override
-            public void refreshSuggestionPerform(AjaxRequestTarget target) {
+            public void refreshSuggestionPerform(AjaxRequestTarget target,
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 removeLastBreadcrumb();
-                final List<ConfirmationOption<DataAccessPermission>> requestRecords =
-                        delineationPermissionsOptions();
-                processSuggestionActivity(target, objectClassName, true,
-                        () -> requestRecords);
+                processSuggestionActivity(target, objectClassName, true, confirmedOptions);
             }
 
             @Override
