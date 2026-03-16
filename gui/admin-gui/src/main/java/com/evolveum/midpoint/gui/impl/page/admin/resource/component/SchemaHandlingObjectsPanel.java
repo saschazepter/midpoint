@@ -29,7 +29,6 @@ import com.evolveum.midpoint.web.component.AjaxIconButton;
 import com.evolveum.midpoint.web.component.data.column.ColumnMenuAction;
 import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
 import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 import com.evolveum.midpoint.web.component.form.MidpointForm;
 import com.evolveum.midpoint.web.component.menu.cog.InlineMenuItem;
 import com.evolveum.midpoint.web.component.menu.cog.InlineMenuItemAction;
@@ -74,6 +73,7 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
     private static final String ID_FORM = "form";
 
     private IModel<Boolean> switchSuggestion = Model.of(Boolean.FALSE);
+    protected SerializableConsumer<AjaxRequestTarget> restartTimer;
 
     public SchemaHandlingObjectsPanel(String id, ResourceDetailsModel model, ContainerPanelConfigurationType config) {
         super(id, model, config);
@@ -91,6 +91,7 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
         add(form);
 
         SmartAlertGeneratingPanel smartAlertGeneratingPanel = createSmartAlertGeneratingPanel(ID_AI_PANEL, switchSuggestion);
+        this.restartTimer = smartAlertGeneratingPanel::restartTimeBehavior;
         form.add(smartAlertGeneratingPanel);
 
         Component panel = createMultiValueListPanel(ID_TABLE);
@@ -172,6 +173,10 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
         aiPanel.setOutputMarkupId(true);
         aiPanel.add(new VisibleBehaviour(switchSuggestion::getObject)); // Visible only when suggestions are enabled
         return aiPanel;
+    }
+
+    protected SmartAlertGeneratingPanel getAiPanel() {
+        return (SmartAlertGeneratingPanel) get(ID_FORM).get(ID_AI_PANEL);
     }
 
     public <P extends Containerable> IModel<PrismContainerWrapper<P>> createContainerModel() {

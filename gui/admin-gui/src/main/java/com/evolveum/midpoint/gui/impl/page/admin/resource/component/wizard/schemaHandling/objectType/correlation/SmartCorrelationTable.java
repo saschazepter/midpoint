@@ -38,6 +38,7 @@ import com.evolveum.midpoint.util.exception.SchemaException;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.component.data.column.ColumnMenuAction;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
 import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
 import com.evolveum.midpoint.web.component.menu.cog.ButtonInlineMenuItem;
@@ -520,7 +521,8 @@ public abstract class SmartCorrelationTable
     }
 
     @Override
-    protected void onSuggestNewPerformed(AjaxRequestTarget target) {
+    protected void onSuggestNewPerformed(AjaxRequestTarget target,
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
         getSwitchToggleModel().setObject(Boolean.TRUE);
         PageBase pageBase = getPageBase();
         ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();

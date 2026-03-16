@@ -15,11 +15,8 @@ import static com.evolveum.midpoint.gui.impl.page.admin.simulation.SimulationsGu
 import static com.evolveum.midpoint.gui.impl.page.admin.simulation.wizard.ResourceSimulationTaskWizardPanel.getSimulationResultReference;
 import static com.evolveum.midpoint.web.session.UserProfileStorage.TableId.TABLE_SMART_CORRELATION;
 
-import java.io.Serial;
 import java.util.List;
 
-import org.apache.wicket.AttributeModifier;
-import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.repeater.RepeatingView;
@@ -28,7 +25,6 @@ import org.apache.wicket.model.Model;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import com.evolveum.midpoint.gui.api.GuiStyleConstants;
 import com.evolveum.midpoint.gui.api.component.result.OpResult;
 import com.evolveum.midpoint.gui.api.model.LoadableModel;
 import com.evolveum.midpoint.gui.api.page.PageBase;
@@ -63,10 +59,10 @@ import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.application.PanelDisplay;
 import com.evolveum.midpoint.web.application.PanelInstance;
 import com.evolveum.midpoint.web.application.PanelType;
-import com.evolveum.midpoint.web.component.AjaxIconButton;
 import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
 import com.evolveum.midpoint.web.component.dialog.ConfirmationPanel;
 import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
+import com.evolveum.midpoint.web.component.util.SerializableConsumer;
 import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavor;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavors;
@@ -94,6 +90,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
     private static final String ID_TABLE = "table";
 
     IModel<Boolean> switchToggleModel = Model.of(Boolean.TRUE);
+    private SerializableConsumer<AjaxRequestTarget> restartTime;
 
     public CorrelationItemsTableWizardPanel(
             String id,
@@ -132,6 +129,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
 
     private void initCorrelationPanel(String resourceOid) {
         SmartAlertGeneratingPanel aiPanel = createSmartAlertGeneratingPanel(resourceOid, switchToggleModel);
+        this.restartTime = aiPanel::restartTimeBehavior;
         add(aiPanel);
 
         SmartCorrelationTable table = createSmartCorrelationTable(switchToggleModel);
@@ -195,34 +193,25 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
             }
 
             @Override
-            protected @NotNull List<Component> createToolbarButtonsList(String idButton) {
-                List<Component> toolbarButtonsList = super.createToolbarButtonsList(idButton);
-                AjaxIconButton generateButton = new AjaxIconButton(idButton, new Model<>(GuiStyleConstants.CLASS_MAGIC_WAND),
-                        () -> isSuggestionExists(loadExistingSuggestion().getObject())
-                                ? createStringResource("Suggestion.button.showSuggest").getString()
-                                : createStringResource("Suggestion.button.suggest").getString()) {
+            public void onSuggestNewPerformed(AjaxRequestTarget target,
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+                super.onSuggestNewPerformed(target, confirmedOptions);
+                restartTime.accept(target);
+            }
 
-                    @Serial private static final long serialVersionUID = 1L;
+            @Override
+            protected List<ConfirmationOption<DataAccessPermission>> suggestionConfirmationOptions() {
+                return ConfirmationOption.correlationPermissionsOptions();
+            }
 
-                    @Override
-                    public void onClick(AjaxRequestTarget target) {
-                        if (isSuggestionExists(loadExistingSuggestion().getObject())) {
-                            getSwitchToggleModel().setObject(Boolean.TRUE);
-                        } else {
-                            onSuggestNewPerformed(target);
-                        }
+            @Override
+            protected boolean isSuggestButtonVisible() {
+                return !isShowSuggestionsButtonVisible();
+            }
 
-                        target.add(CorrelationItemsTableWizardPanel.this);
-                        refreshAndDetach(target);
-                    }
-                };
-                generateButton.add(new VisibleBehaviour(this::displayNoValuePanel));
-                generateButton.add(AttributeModifier.append("class", "btn btn-default text-ai rounded"));
-                generateButton.setOutputMarkupId(true);
-                generateButton.showTitleAsLabel(true);
-
-                toolbarButtonsList.add(generateButton);
-                return toolbarButtonsList;
+            @Override
+            protected boolean isShowSuggestionsButtonVisible() {
+                return isSuggestionExists(loadExistingSuggestion().getObject());
             }
 
             @Override
