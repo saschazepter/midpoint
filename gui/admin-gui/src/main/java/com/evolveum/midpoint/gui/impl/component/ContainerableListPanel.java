@@ -660,6 +660,11 @@ public abstract class ContainerableListPanel<C extends Serializable, PO extends 
             }
 
             @Override
+            public int getCollapsibleToggleColumnIndex() {
+                return ContainerableListPanel.this.getCollapsibleToggleColumnIndex();
+            }
+
+            @Override
             public boolean displayIsolatedNoValuePanel() {
                 return ContainerableListPanel.this.displayIsolatedNoValuePanel();
             }
@@ -674,6 +679,10 @@ public abstract class ContainerableListPanel<C extends Serializable, PO extends 
                 return ContainerableListPanel.this.isFooterVisible(super.isFooterVisible(provider, pageSize));
             }
         };
+    }
+
+    protected int getCollapsibleToggleColumnIndex() {
+        return 0;
     }
 
     protected int getDefaultPageSize() {

@@ -151,6 +151,7 @@ public class UserProfileStorage implements Serializable, DebugDumpable {
         PAGE_SIMULATION_RESULT_TAGS,
         PAGE_SIMULATION_RESULT_PROCESSED_OBJECTS,
         PAGE_SIMULATION_RESULT_CORRELATION_PROCESSED_OBJECTS,
+        PAGE_SIMULATION_RESULT_MAPPING_PROCESSED_OBJECTS,
         PAGE_MARKS_TABLE,
         PANEL_USER_ACCESSES,
         MARK_MARKED_SHADOWS_PANEL,
@@ -178,6 +179,7 @@ public class UserProfileStorage implements Serializable, DebugDumpable {
         PANEL_TASK_ERRORS,
         PANEL_CONNECTOR_GENERATION_DOCUMENTATION,
         PANEL_ASSOCIATION_SCHEMA_HANDLING,
+        PANEL_FOCUS_CREDENTIALS_OTP,
     }
 
     private final Map<String, Integer> tables = new HashMap<>();

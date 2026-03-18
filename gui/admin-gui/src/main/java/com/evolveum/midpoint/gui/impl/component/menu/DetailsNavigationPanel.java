@@ -80,12 +80,13 @@ public class DetailsNavigationPanel<O extends ObjectType> extends BasePanel<List
     }
 
     private void initLayout() {
-        ListView<ContainerPanelDto> listView = new ListView<>(ID_NAV, getContainerPanelListModel()) {
+        IModel<List<ContainerPanelDto>> containerListModel = getContainerPanelListModel();
+        ListView<ContainerPanelDto> listView = new ListView<>(ID_NAV, containerListModel) {
             @Serial private static final long serialVersionUID = 1L;
 
             @Override
             protected void populateItem(ListItem<ContainerPanelDto> item) {
-                populateNavigationMenuItem(item);
+                populateNavigationMenuItem(item, containerListModel);
             }
         };
         listView.setOutputMarkupId(true);
@@ -99,13 +100,14 @@ public class DetailsNavigationPanel<O extends ObjectType> extends BasePanel<List
                         .toList());
     }
 
-    private void populateNavigationMenuItem(ListItem<ContainerPanelDto> item) {
+    private void populateNavigationMenuItem(ListItem<ContainerPanelDto> item,
+            IModel<List<ContainerPanelDto>> containerListModel) {
         ContainerPanelDto containerPanelDto = item.getModelObject();
         ContainerPanelConfigurationType panelConfig = containerPanelDto.getContainerPanelConfig();
         WebMarkupContainer navigationDetails = createNavigationItemParentPanel(containerPanelDto);
         item.add(navigationDetails);
 
-        AjaxSubmitLink link = createNavigationLink(containerPanelDto);
+        AjaxSubmitLink link = createNavigationLink(containerPanelDto, containerListModel);
         navigationDetails.add(link);
 
         addParentMenuItemDescription(link, panelConfig);
@@ -171,7 +173,8 @@ public class DetailsNavigationPanel<O extends ObjectType> extends BasePanel<List
         return false;
     }
 
-    private AjaxSubmitLink createNavigationLink(ContainerPanelDto panelConfigDto) {
+    private AjaxSubmitLink createNavigationLink(ContainerPanelDto panelConfigDto,
+            IModel<List<ContainerPanelDto>> containerListModel) {
         ContainerPanelConfigurationType panelConfig = panelConfigDto.getContainerPanelConfig();
         AjaxSubmitLink link = new AjaxSubmitLink(ID_NAV_ITEM_LINK) {
             @Serial private static final long serialVersionUID = 1L;
@@ -183,6 +186,12 @@ public class DetailsNavigationPanel<O extends ObjectType> extends BasePanel<List
                 target.add(DetailsNavigationPanel.this);
                 onClickPerformed(panelConfig, target);
                 clickedMenuItemName = createButtonLabel(panelConfig).getObject();
+
+                containerListModel
+                        .getObject()
+                        .stream()
+                        .filter(dto -> dto != panelConfigDto)
+                        .forEach(c -> c.setExpanded(false));
                 panelConfigDto.setExpanded(!panelConfigDto.isExpanded());
             }
 

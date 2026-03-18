@@ -7,75 +7,197 @@ doc-type: config
 :page-upkeep-status: green
 :page-toc: top
 
-TODO
+MidPoint Expression Language (MEL) is an expression language designed to support customization of midPoint functionality in an easy-to-use and secure way.
 
-MidPoint Expression Language (MEL) is a ...
+This page provides detailed description of the language.
+It is meant to be a reference documentation of the language.
 
-TODO: literals
+TIP: See xref:../introduction/[MEL Introduction] for a step-by-step introduction to MEL language.
+If you are used to create Groovy scripts, xref:../migration/[MEL Migration Guide] may be a good start.
+
+== Literals
+
+[%autowidth]
+|====
+| Literal | Prefix / Delimiter / Values | Example | Notes
+
+| String
+| `'` (apostrophe)
+| `'Hello world!'`
+|
+
+| Numeric
+| none
+| `42` +
+`3.14`
+|
+
+| Boolean
+| `true` +
+`false`
+| `true`
+|
+
+| Bytes
+| `b`
+| `b'\x68\x65\x6c\x6c\x6f'`
+|
+
+| Null
+| `null`
+| `null`
+|
+
+| List
+| `[]` (square brackets)
+| `[1, 2, 3]` +
+`['foo', 'bar', 'baz']`
+|
+
+| Map
+| `{}` (curly brackets)
+| `{'one': 'unus', 'two': 'duo', 'thee': 'tres'}`
+|
+
+| Timestamp
+| `timestamp()` constructor function
+| `timestamp('2026-06-15T10:30:45.123Z')`
+|
+
+| Duration
+| `duration()` constructor function
+| `duration('1h30m')`
+|
+
+|====
+
 
 == Operators
-
-TODO: table of operators with precedence
 
 Following _operators_ can be used in MEL expressions:
 
 [%autowidth]
 |====
-| Operator | Meaning
+| Operator | Meaning | Notes
 
 |`==`
 | Equality
+|
 
 |`!=`
 | Inequality
+|
 
 |`>`
 | Greater than
+|
 
 |`>=`
 | Greater than or equal
+|
 
 |`<`
 | Less than
+|
 
 |`\<=`
 | Less than or equal
+|
 
 |`+`
 | Addition, concatenation
+| Can be used for algebraic addition or string concatenation.
 
 |`-`
 | Negation, subtraction
+|
 
 |`*`
 | Multiplication
+|
 
 |`/`
 | Division
+|
 
 |`%`
 | Remainder
+|
 
 |`!`
 | Logical NOT
+|
 
 |`&&`
 | Logical AND
+|
 
 |`\|\|`
 | Logical OR
+|
+
+|`()`
+| Grouping
+|
 
 |`in`
 | Inclusion test
+|
 
 |`?:`
 | Conditional
+|
+
+|`.`
+| Selection
+| Used to resolve structured data, assumes non-null operand.
+
+|`.?`
+| Optional selection
+| Used to resolve structured data, can handle null operand.
+
+|`[]`
+| Index
+| Used to retrieve specific value from a list, map or structured data.
+Assumes non-null operand.
+
+|`[?]`
+| Optional Index
+| Used to retrieve specific value from a list, map or structured data.
+Can handle null operand.
 
 |====
 
+== Variables
 
+Variables are demoted without any prefix.
+E.g. following expression is adding values of two variables, `foo` and `bar`:
 
-TODO: include indexing ([]) and 'in'
+[source,mel]
+----
+foo + bar
+----
+
+The usual xref:/midpoint/reference/expressions/variables/[expression and mapping] variables are available for MEL expressions.
+However, there are few exceptions:
+
+* Deprecated variables `user`, `account` and `shadow` are not present in MEL expressions.
+Use correct variables names instead (`focus` and `projection`).
+
+* Variables that represent services for Java-like languages (`prismContext`, `localizationService`) do not make sense in MEL environment, therefore these are not present.
+
+* Some script expression environments expose built-in extension libraries in a form of variables (`basic`, `midpoint`, `log`).
+These variables are not present in MEL environment.
+Equivalent functionality is available to MEL expressions in a form of native MEL language extensions,
+e.g. as `norm`, `log.debug(...)` or `midpoint.getObject(...)` functions.
+See xref:../migration/[migration guide] for more details.
+
+There is additional variable available to all MEL expressions:
+
+* Variable `now` contains current timestamp.
+It is a fixed timestamp of an approximate moment of the script execution.
+Value of the variable does not change during script execution.
+
 
 == Functions and Macros
 
@@ -439,19 +561,17 @@ If the search string is not found the function returns -1.
 'midpoint is in the middle'.lastIndexOf('id', 5)  // Returns 1
 ----
 
-=== lowerAscii
+=== lc
 
-`string.lowerAscii()` -> string
+`string.lc()` -> string
 
-Returns a new string where all ASCII characters are lower-cased.
-This function does not perform Unicode case-mapping for characters outside the ASCII range.
+Returns a new string where all characters are lower-cased.
 
 .Example
 [source,mel]
 ----
+'Čórtúv Hrád'.lc()  // Returns 'čórtúv hrád'
 ----
-// TODO
-
 
 === list
 
@@ -469,6 +589,25 @@ list('foo')          // Returns ['foo']
 list(['foo'])        // Returns ['foo']
 list(['foo','bar'])  // Returns ['foo','bar']
 ----
+
+=== lowerAscii
+
+`string.lowerAscii()` -> string
+
+Returns a new string where all ASCII characters are lower-cased.
+This function does not perform Unicode case-mapping for characters outside the ASCII range.
+
+.Example
+[source,mel]
+----
+'Čórtúv Hrád'.lowerAscii()  // Returns 'Čórtúv hrád'
+----
+
+This is s stock CEL function, it is mostly provided just for compatibility.
+
+WARNING: As this function is not mapping non-ASCII characters, it is not suitable for international unvironments.
+Use `lc()` function instead.
+
 
 === map
 
@@ -679,11 +818,17 @@ The substring begins at the specified `beginIndex` and extends to the character 
 Thus the length of the substring is `endIndex - beginIndex`.
 If `endIndex` is not specified, the substring extends to the end of original string.
 
+Empty string is returned in case that the indexes extend beyond the original string.
+
 .Example
 [source,mel]
 ----
 'midpoint'.substring(0,3)   // Returns 'mid'
 ----
+
+NOTE: The `substring` function does not fail in case the indexes extend beyond the original string.
+This behavior differs from stock behavior of Google CEL string extensions.
+This behavior change is very intentional, enabling creation of simpler expressions.
 
 === trim
 
@@ -708,8 +853,25 @@ This function does not perform Unicode case-mapping for characters outside the A
 .Example
 [source,mel]
 ----
+'Čórtúv Hrád'.upperAscii()  // Returns 'ČóRTúV HRáD'
 ----
-// TODO
+
+This is s stock CEL function, it is mostly provided just for compatibility.
+
+WARNING: As this function is not mapping non-ASCII characters, it is not suitable for international unvironments.
+Use `uc()` function instead.
+
+=== uc
+
+`string.uc()` -> string
+
+Returns a new string where all characters are upper-cased.
+
+.Example
+[source,mel]
+----
+'Čórtúv Hrád'.uc()  // Returns 'ČÓRTÚV HRÁD'
+----
 
 
 == Language Extensions
@@ -747,7 +909,7 @@ format.concatName(['Radovan', 'Semančík'])
 
 Formats provided timestamp to string, using a format template specified in POSIX notation.
 
-This is POSIX-compatible function, using a POSIX time formatting conventions (TODO: ref).
+This is POSIX-compatible function, using a xref:../strftime/[POSIX time formatting conventions].
 This format is used by other variants of Common expression language (CEL).
 Use of this function is generally *recommended* instead of Java-like variants below.
 
@@ -774,7 +936,7 @@ ts.strftime('%d/%m/%Y %H:%M:%S')
 
 Parses provided string to timestamp, using a format template specified in POSIX notation.
 
-This is POSIX-compatible function, using a POSIX time formatting conventions (TODO: ref).
+This is POSIX-compatible function, using a xref:../strftime/[POSIX time formatting conventions].
 This format is used by other variants of Common expression language (CEL).
 Use of this function is generally *recommended* instead of Java-like variants below.
 
@@ -801,7 +963,7 @@ This function can also be invoked as a _member_ function on a string:
 
 Formats provided timestamp to string, using a format template specified in Java SimpleDateFormat notation.
 
-This is Java-like function, compatible with original midPoint 3.x _basic expression functions_ (TODO: ref).
+This is Java-like function, compatible with original midPoint 3.x xref:/midpoint/reference/expressions/expressions/script/functions/[_basic expression functions_].
 This function is mostly provided for users that are accustomed to Java conventions and for the purposed of easier migration of Groovy scripts to MEL.
 Use of this function is generally *not recommended*.
 Use `strftime` function instead.
@@ -829,7 +991,7 @@ ts.formatDateTime('dd/MM/YY HH:mm:ss')
 
 Parses provided string to timestamp, using a format template specified in Java SimpleDateFormat notation.
 
-This is Java-like function, compatible with original midPoint 3.x _basic expression functions_ (TODO: ref).
+This is Java-like function, compatible with original midPoint 3.x xref:/midpoint/reference/expressions/expressions/script/functions/[_basic expression functions_].
 This function is mostly provided for users that are accustomed to Java conventions and for the purposed of easier migration of Groovy scripts to MEL.
 Use of this function is generally *not recommended*.
 Use `strptime` function instead.
@@ -1360,22 +1522,42 @@ As most identifiers as single-valued, this function is often combined with `sing
 single(shadow.secondaryIdentifiers())
 ----
 
-
-format, ldap, log, etc.
-
-TODO: need to call them by some other name ... e.g. "extensions"?
-"extension libraries"?
-
-
 == Timestamps and Durations
 
+Timestamps can be constructed by using the `timestamp()` function.
+The `timestamp()` constructor expect a string argument, specifying a timestamp formatted according to RFC 3339/ISO8601 format.
 
-TODO: timestamp functions, e.g. getDate()
-TODO: timezones
+[source,mel]
+----
+timestamp('2026-03-15T12:34:56Z')
+----
 
-Note: CEL timestamps always reference time in UTC
+Similarly, there is a `duration()` constructor:
 
-variable `now`
+[source,mel]
+----
+duration('1h30m')
+duration('-300ms')
+----
+
+The duration string used by CEL is not following any standardized format.
+It is built on common conventions, where characters `h`, `m`, `s`, `ms`, `us` and `ns` specifying units of time.
+
+CEL timestamps follow _protocol buffer_ convention, which means that the timestamps are fixed to UTC (`Z`) timezone.
+Functions that work with timestamps in a timezone-specific manner (e.g. `atStartOfDay()`) assume system timezone as default, allowing optional explicit specification of a time zone.
+Timezone specification follows _IANA Time Zone Database_ (a.k.a _Olson_ or _tz database_).
+
+Timestamps and durations can be used in some arithmetic and comparison operations:
+
+[source,mel]
+----
+timestamp('2026-03-15T12:34:56Z') + duration('1h30m')
+timestamp('2026-03-15T12:34:56Z') < timestamp('2026-03-15T14:30:00Z')
+----
+
+Timestamp referring to the "current" time instant is available in variable `now`.
+The value of this variable refers to an approximate moment of the start of expression evaluation.
+Value of this variable is fixed through the evaluation of the expression.
 
 === atStartOfDay
 
@@ -1386,7 +1568,6 @@ Modifies the timestamp to refer to the start of the day.
 Resulting timestamp refers to the same day as the argument timestamp, however the time is reset to the earliest time at that day.
 
 Optional time zone can be specified.
-Timezone specification follows https://docs.oracle.com/javase/8/docs/api/java/time/ZoneId.html[Java ZoneId conventions].
 If no timezone is specified, system default timezone is assumed.
 
 Following example assume that system default time zone is UTC.
@@ -1407,7 +1588,6 @@ Modifies the timestamp to refer to the end of the day.
 Resulting timestamp refers to the same day as the argument timestamp, however the time is set to the latest time at that day.
 
 Optional time zone can be specified.
-Timezone specification follows https://docs.oracle.com/javase/8/docs/api/java/time/ZoneId.html[Java ZoneId conventions].
 If no timezone is specified, system default timezone is assumed.
 
 Following example assume that system default time zone is UTC.
@@ -1617,9 +1797,8 @@ timestamp.longAgo()    // Returns timestamp 1970-01-01T00:00:00Z
 
 == Polystrings
 
-Polystrings (TODO: ref) are midPoint data structured used to store string values, together with their normalized and localized variants.
+xref:/midpoint/reference/concepts/polystring/[Polystrings] are midPoint data structured used to store string values, together with their normalized and localized variants.
 
-TODO: polystring structure.
 Polystrings are represented as simple structured objects in MEL.
 Individual parts of polystring can be accessed by using the usual _dot notation_:
 
@@ -1646,12 +1825,14 @@ If the normalized part of polystring is to be used, it must be explicitly refere
 'X' + polystring.norm
 ----
 
+NOTE: The localization functionality of polystrings is not available in MEL at this time.
+
 == Protected Strings
 
-Protected strings (TODO: ref) are midPoint data structure meant to provide extra protection to string data.
+xref:/midpoint/reference/concepts/protectedstring/[Protected strings] are midPoint data structure meant to provide extra protection to string data.
 They are usually used to contain passwords, API keys and similar sensitive data.
 
-Unlike polystrings, protected strings _do not_ behave like strings.
+Unlike polystrings, protected strings _do not_ behave like strings in MEL.
 This is an intentional behavior to provide additional protection against unintentional leakage of the data, e.g. in logfiles.
 We do not want string functions (such as substring) to unintentionally reveal content of a protected string.
 If you need to do string operations on a protected string, you have to explicitly decrypt it first.
@@ -1667,8 +1848,6 @@ Ordinary string value can be encrypted, to gain additional protection of a _prot
 ----
 string.endecrypt()
 ----
-
-See TODO:ref for more information about protected strings.
 
 === decrypt
 
@@ -1727,7 +1906,7 @@ Works with strings as well as polystrings.
 
 == Structured Data
 
-Object structure can be accessed in mel using the dot (`.`) convention.
+Object structure can be accessed in mel using the selection operator (`.`) (a.k.a. _dot convention_).
 Following expression returns value of `name` property of the object stored in `focus` xref:/midpoint/reference/expressions/variables/[variable].
 
 [source,mel]
@@ -1743,7 +1922,7 @@ Following code returns value of `administrativeStatus` property located inside `
 focus.activation.administrativeStatus
 ----
 
-Alternativelly, _index operator_ (`[]`) can be used to access structured data:
+Alternatively, _index operator_ (`[]`) can be used to access structured data:
 
 [source,mel]
 ----
@@ -1753,7 +1932,7 @@ focus['name']
 Structure of the data is dictated by xref:/midpoint/reference/schema/common-data-model/[midPoint schema].
 
 Access to extension items of objects is facilitated by an `extension` container.
-E.g. extension attribute `ship` of the object stored in the `focus` variable can be accesed as follows:
+E.g. extension attribute `ship` of the object stored in the `focus` variable can be accessed as follows:
 
 [source,mel]
 ----
@@ -1761,7 +1940,55 @@ focus.extension.ship
 focus.extension['ship']
 ----
 
-// TODO: has()
+When working with midPoint (prism) objects, both strings and qnames can be used as indexes.
+
+The `has()` macro can be used for tests regarding presence of items in structured objects and maps:
+
+[source,mel]
+----
+has(focus.fullName)
+----
+
+However, the `has()` macro is not null-safe.
+E.g. the expression above fails in case the `focus` variable is `null`.
+It is recommended to use `isNull()` and `isPresent()` functions instead (see below).
+
+=== Optional Values in Structured Data
+
+CEL interpreter that evaluates MEL expressions assumes that the data structures accessed by the expression exist when the expression is evaluated.
+E.g. the following expression assumes that variable `focus` contains structured data value, which has field `activation`, which has field `administrativeStatus`.
+The expression fails if any of that assumptions is false, e.g. if variable `focus` does not contain a value (is `null`).
+
+[source,mel]
+----
+focus.activation.administrativeStatus
+----
+
+However, the data are seldom complete.
+In usual case, the data are only partially populated.
+E.g. a focus may not have activation at all, and objects with `administrativeStatus` explicitly defined are quite rare.
+MEL allows specification of _optional selection_ by adding question mark (`?`) after the dot when working with incomplete data.
+
+[source,mel]
+----
+focus.?activation.?administrativeStatus
+----
+
+The expression above does not fail when variable `focus` does not contain any value, or in case that there is no `activation` container or `administrativeStatus` property.
+In such cases the expression evaluates to an _empty optional_, which is supposed to be equivalent to `null`.
+
+MidPoint interprets the value correctly when it is a result value of an expression.
+Most of MEL functions can interpret the value correctly as well.
+However, interpretation of some built-in CEL operators (e.g. `==` and `+`) can be confusing.
+Therefore, it is recommended to use functions `isPresent()` and `isNull()` for checks, and `format()` for string formatting when dealing with optional values.
+E.g. the `isPresent()` function can be used to determine whether a particular item is present in data:
+
+[source,mel]
+----
+isPresent(focus.?activation.?administrativeStatus)
+----
+
+See xref:#null-and-optional-values[Null and Optional Values section] below.
 
 === Item QNames
 
@@ -1777,59 +2004,260 @@ However, it may be required in some cases, e.g. when several schema extensions a
 
 === Item Path
 
-Item path (TODO: ref) can be used to locate an item in an object by using the `find()` function:
+xref:/midpoint/reference/concepts/item-path/[Item path] can be used to locate an item in an object by using the `find()` function:
 
 [source,mel]
 ----
 focus.find('activation/administrativeStatus')
 ----
 
-== Variables
+== Null and Optional Values
 
-The usual xref:/midpoint/reference/expressions/variables/[expression and mapping] variables are available for MEL expressions.
-However, there are few exceptions:
+MEL expressions often need to deal with `null` and optional values, values which may or may not be present.
+This applies to script variables, which may have value in some cases, and may not have value (`null`) in others.
+Then there are structured data (midPoint/prism objects), which have many optional items.
 
-* Deprecated variables `user`, `account` and `shadow` are not present in MEL expressions.
-Use correct variables names instead (`focus` and `projection`).
+CEL language provides some mechanisms to deal with such optional values.
+Unfortunately, there are two mechanisms to represent value which is not present: _null values_ and _optionals_.
+These mechanisms are not perfectly aligned, which may cause a lot of confusion.
 
-* Variables that represent services for Java-like languages (`prismContext`, `localizationService`) do not make sense in MEL environment, therefore these are not present.
+When it comes to structured types, CEL assumes that all the items in a structured data referenced by an expression exist, and are present in the data.
+E.g. following expression fails in case that the object in the `focus` variable does not have `activation` container, that container does not have `administrativeStatus` property, or even if `focus` variable has `null` value.
 
-* Some script expression environments expose built-in extension libraries in a form of variables (`basic`, `midpoint`, `log`).
-These variables are not present in MEL environment.
-Equivalent functionality is available to MEL expressions in a form of native MEL language extensions,
-e.g. as `norm`, `log.debug(...)` or `midpoint.getObject(...)` functions.
-See xref:../migration/[migration guide] for more details.
+.Fragile processing of structured data, not recommended
+[source,mel]
+----
+focus.activation.administrativeStatus
+----
 
-There is additional variable available to all MEL expressions:
+The method used in expression above is not recommended in MEL expressions.
+Such expressions are reliable only if you are absolutely sure that all the referenced items are present in the data, which usually means that the expressions have explicitly checked their existence before.
+In general case, the use of `.?` operator is recommended instead:
 
-* Variable `now` contains current timestamp.
-It is a fixed timestamp of an approximate moment of the script execution.
-Value of the variable does not change during script execution.
+.Robust processing of structured data, recommended
+[source,mel]
+----
+focus.?activation.?administrativeStatus
+----
+
+The `.?` operator is using _optionals_, which means it does not fail even if there is no `activation` container, that container does not have `administrativeStatus` property, or even if `focus` variable is `null`.
+In all such cases the expression evaluates to _empty optional_, which is supposed to have the same meaning as `null` value.
+However, it is not _completely_ equivalent to `null`, as _empty optional_ is formally a non-null value.
+This means that CEL/MEL has two mechanisms for representing values that may or may not be present.
+Therefore, simple equality check for `null` is not reliable:
+
+.Not recommended, not reliable
+[source,mel]
+----
+foo == null
+----
+
+This equality operator checks whether the value is `null`.
+As optional are always non-null, the expression above returns non-intuitive result (`false`) for empty optionals.
+The expression above is likely to work correctly when used with variables which contain primitive values, but it will not work with optionals.
+This can be counter-intuitive when dealing with structured data:
+
+.Incorrect, counter-intuitive expression
+[source,mel]
+----
+focus.?activation.?administrativeStatus == null
+----
+
+The expression above never evaluates to `false`, as optionals are always non-null values, even if the item that they reference does not exist.
+As a rule of thumb, it is recommended to *always avoid use of null equality check (`foo == null`)*.
+
+MEL provides a special purpose functions `isNull()` and `isPresent()` which can be reliably used in all the cases.
+All the expressions below will be evaluated correctly, providing results that the user would intuitively expect.
+
+.Recommended check for optional/null values
+[source,mel]
+----
+isNull(foo)
+isNull(focus.?activation.?validFrom)
+isPresent(focus.?activation.?administrativeStatus)
+----
+
+NOTE: There is a `has()` macro in CEL, which can be used to check for presence of a particular element in structured data.
+However, the `has()` macro has limitations, which makes it difficult to use in some cases.
+The use of `isNull()` and `isPresent()` functions is recommended instead of use of `has()` macro, especially for new users.
+
+Moreover, there is a `default()` function which is very handy, and it reliably detects present or missing value in all the cases:
+
+.Recommended check for optional/null values
+[source,mel]
+----
+default(focus.?lifecycleState, 'active')
+----
+
+The expression above will always return a valid string value, even in case that `focus` variable is `null`, or that the object present in `focus` variable does not have `lifecycleState` property.
+
+While MEL provides functions that work reliably (`isNull()`, `isPresent()`) and even some convenience functions (`default()`) which make it easy to work with null and optional values, there is still one drawback given by the nature of CEL.
+
+While the `.?` operator works reliably with structured data, it cannot be used for function invocation.
+E.g. the following expression is invalid:
+
+.Invalid expression
+[source,mel]
+----
+foo.?contains('#')
+----
+
+Assuming that `foo` is a string variable, which may either contain a string or `null`, the expression above is specifying execution of `contains()` function on that variable.
+However, the use of `.?` operator in this way is illegal in CEL, and currently there is no practical way for MEL extensions to implement this behavior.
+Therefore, the only practical option in this case is to explicitly check for `null` value using a conditional operator (`?:`):
+
+.Correct expression
+[source,mel]
+----
+isPresent(foo) ? foo.contains('#') : null
+----
+
+When working with strings, `stringify()` function can be very handy.
+As `stringify()` never returns null, any string function can be safely invoked on stringified value:
+
+.Simpler correct expression
+[source,mel]
+----
+stringify(foo).contains('#')
+----
+
+Such use of `stringify()` can be very handy in case of string formatting as well.
+If your intent is to return empty string instead of null
 
 == Custom Function Libraries
 
-TODO
+Functions from custom xref:/midpoint/reference/expressions/function-libraries/[expression function libraries] can be easily invoked from MEL.
+The function can be invoked by combining name of the library with name of the function.
+Following expression is invoking function `determineOrg()` from function library `mylib`, using `foo` as arguments.
+
+[source,mel]
+----
+mylib.determineOrg(foo)
+----
+
+The expression above is using simplified notation, which works for custom function that has at most one argument.
+As arguments of functions in custom function libraries are referencing the parameters by _name_ rather than their position, functions that have more than one argument need to use _map_ to specify parameter values:
+
+[source,mel]
+----
+mylib.generateIdentifier({ 'prefix': 'X', 'length': 10 })
+----
+
+The expression above invokes custom function `generateIdentifier()` with two parameters.
+Parameter `prefix` with value `X` and parameter `length` with value `10`.
+
+NOTE: Functional expression languages such as MEL/CEL are based on an assumption that functions as well as other operations are _free of any side effects_.
+I.e. the functions are supposed to be _idempotent_: no matter how many times they are executed, they produce the same result.
+This feature is important for consistency of expression evaluation, as the sequence of evaluation of individual functions or other operations is determined by CEL runtime.
+It is important to keep that in mind when creating custom function libraries that are meant to be invoked by MEL expressions.
+As a rule of thumb, the library function should _not_ make any modifications or change the state of midPoint repository.
+
+== Miscellaneous Notes
+
+* MEL expression can span multiple lines, which provides opportunity for indentation to increase readability.
+
+* Two slashes (`//`) can be used to add comments in expressions.
+The slashes start a comment, which ends at the end of line.
+
+* Deprecated variables such as `user`, `account` and `shadow` are not available in MEL.
+Use variables such as `focus` and `projection` instead.
 
 == Expression Profiles
 
-TODO
+xref:/midpoint/reference/expressions/expressions/profiles/[Expression profiles] are applied to MEL expressions in the same way as they are applied to any other expression in midPoint.
+E.g. the following expression profile configuration can be used to deny access to all scripting expression evaluators except for MEL, applying `script-mel-restricted` permission profile to MEL expressions:
+
+[source,xml]
+----
+<systemConfiguration>
+    ...
+    <expressions>
+        <expressionProfile>
+            ...
+            <evaluator>
+                <type>script</type>
+                <decision>deny</decision>
+                <script>
+                    <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#mel</language>
+                    <decision>allow</decision>
+                    <typeChecking>true</typeChecking>
+                    <permissionProfile>script-mel-restricted</permissionProfile>
+                </script>
+            </evaluator>
+            ...
+        </expressionProfile>
+        ...
+    </expressions>
+    ...
+</systemConfiguration>
+----
+
+MEL expression language is considered to be _secure_ in such a way that no MEL expression can compromise the platform on which it is running.
+However, this does not mean that all the functionality available to MEL expressions is harmless.
+Some MEL language extensions and custom function libraries may reveal sensitive information.
+E.g. function `secret.resolveString()` has access to secret providers, which include credential vaults.
+Functions in the `midpoint.*` language extension have read access to midPoint repository, which may reveal sensitive information.
+Therefore, common recommendation is to use _permission profile_ to limit access to MEL language extensions that are not strictly necessary.
+The `package` clause of a _permission profile_ can be used to control access to individual MEL language extensions, using their name (prefix).
+Following configuration allows access to all MEL extensions, except for `midpoint` and `secret` extensions.
+
+[source,xml]
+----
+<systemConfiguration>
+    ...
+    <expressions>
+        ...
+        <permissionProfile>
+            <identifier>script-mel-restricted</identifier>
+            <decision>allow</decision>
+            <package>
+                <name>midpoint</name>
+                <description>midpoint.* MEL language extension</description>
+                <decision>deny</decision>
+            </package>
+            <package>
+                <name>secret</name>
+                <description>secret.* MEL language extension</description>
+                <decision>deny</decision>
+            </package>
+        </permissionProfile>
+        ...
+    </expressions>
+    ...
+</systemConfiguration>
+----
+
+// TODO: default expression profiles in 4.11
 
 == MEL and CEL
 
 MidPoint Expression Language (MEL) is based on link:https://cel.dev/[Common Expression Language], extended with midPoint-specific features, functions and libraries.
+MEL is using basic CEL syntax, operators, basic functions and even some extensions (e.g. regexp).
+However, as CEL is oriented towards the _protocol buffers_ world, MEL provides access to midPoint objects that are based on xref:/midpoint/devel/prism/[Prism].
+Moreover, MEL is extending the basic CEL environment with midPoint data types such as xref:/midpoint/reference/concepts/polystring/[polystring] and xref:/midpoint/reference/concepts/protectedstring/[protected string] as well as variety of functions that adapt the language for midPoint environment.
 
-== MEL and Java
+Simple expressions in MEL and CEL are going to be the same.
+However, MEL is expanding on CEL, especially with convenience functions and much better support for nullable values, MEL expressions have a very distinct "midPointish" look and feel.
 
-TODO: MEL/CEL is not a Java world.
+== MEL and Java/Groovy
+
+MEL is a secure expression language with a distinct functional character.
+This makes MEL very _unlike_ Java and Groovy.
+MEL is not suitable for implementing complex algorithms.
+This is not a purpose of MEL.
+MEL is meant to create mappings and customizations, including quite complex customization.
+However, the way MEL is doing that is very different from the imperative Java/Groovy world, and it will require some time for adjustments.
+See xref:../migration/[MEL Migration Guide] for more information.
+
+MEL is meant to create expressions that are _secure_, which means that MEL needs to be limited by design.
 Java classes and libraries are intentionally _not_ exposed to MEL expressions.
+MEL expressions are living in their own safe little world.
 
-== TODO
-
-* Literals
-
-* Types and Conversions
+// TODO: later: types and conversions
 
 == See Also
 
+* xref:../introduction/[MidPoint Expression Language Introduction]
+* xref:../migration/[MEL Migration Guide]
 * link:https://cel.dev/[Common Expression Language]
 * link:https://github.com/google/cel-spec/blob/master/doc/langdef.md[CEL Language Specification]

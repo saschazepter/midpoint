@@ -1,6 +1,6 @@
 ---
 midpoint-feature: expression-mel
-doc-type: config
+doc-type: guide
 ---
 = MidPoint Expression Language Migration Guide
 :page-nav-title: Migation Guide
@@ -11,21 +11,36 @@ This document provides guidance for migration of script expression from legacy s
 
 == MEL and Java
 
-MEL is _expression_ language.
-Not Turing-complete - by purpose.
-Functional character. No sequences.
+MEL is an _expression_ language.
+The language was designed to implement simple expressions which compute a value.
+Computing a value is the entire purpose of MEL.
 
-Simple expressions should still be simple.
-May need some time and experience to adapt.
-Complex expressions may not be possible in MEL - and that is a good thing.
+Unlike Java, Groovy or Python, MEL is _not_ an imperative language.
+MEL does not execute a sequence of commands.
+MEL expressions are _functional_ in nature.
+Result value is computed by a function, arguments of that function are result of different functions and so on.
 
-TODO: MEL/CEL is not a Java world.
+MEL is not Turing-complete - by purpose.
+We want MEL to be secure, which means that MEL has to be constrained.
 Java classes and libraries are intentionally _not_ exposed to MEL expressions.
+There is a lot of bad things that can happen when a rich environment is available to expressions.
+Only a carefully selected set of functions is available to MEL.
+
+This way of thinking may look a bit odd at the first sight if you are used to imperative programming language such as Groovy or Java.
+_Expressions_ are not like that.
+However, MEL expressions has numerous benefits, and the language will look very natural once you get used to it.
+Just write the expression to compute and return a value.
+Let midPoint do the rest: all the iterations, type conversions, delta computations, retries and all the other stuff, both mundane and smart.
+That is what midPoint was built for.
 
 == Security
 
 MEL is designed for security. Unlike Groovy, access to functionality is strictly controlled.
 Only very limited functionality is provided.
+
+No side effects!
+
+Complex expressions may not be possible in MEL - and that is a good thing.
 
 == Flow Control
 
@@ -159,6 +174,8 @@ These functions are not implemented yet, as we are exploring the correct approac
 Such functions are likely to appear in the future versions of midPoint, albeit their form may be significantly different from their Groovy counterparts.
 
 == Custom Function Libraries
+
+// TODO: Remember, no side effects!
 
 == Combining MEL and Groovy
 

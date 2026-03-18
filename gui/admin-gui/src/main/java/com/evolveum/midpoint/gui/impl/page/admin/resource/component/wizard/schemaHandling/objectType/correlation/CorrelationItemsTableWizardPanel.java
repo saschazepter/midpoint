@@ -7,29 +7,16 @@
 package com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.correlation;
 
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.MappingUtils.createMappingsValueIfRequired;
-import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.*;
+import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.collectRequiredResourceAttributeDefs;
+import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.isSuggestionExists;
+import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.loadCorrelationTypeSuggestion;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.removeCorrelationTypeSuggestionNew;
 import static com.evolveum.midpoint.gui.impl.page.admin.simulation.SimulationsGuiUtil.loadSimulationResult;
 import static com.evolveum.midpoint.gui.impl.page.admin.simulation.wizard.ResourceSimulationTaskWizardPanel.getSimulationResultReference;
 import static com.evolveum.midpoint.web.session.UserProfileStorage.TableId.TABLE_SMART_CORRELATION;
 
-import java.io.Serial;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import com.evolveum.midpoint.gui.api.GuiStyleConstants;
-import com.evolveum.midpoint.gui.api.prism.wrapper.PrismObjectWrapper;
-import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils;
-import com.evolveum.midpoint.prism.*;
-import com.evolveum.midpoint.util.exception.CommonException;
-import com.evolveum.midpoint.web.component.AjaxIconButton;
-import com.evolveum.midpoint.web.component.dialog.ConfirmationPanel;
-
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.session.SuggestionsStorage;
-
-import org.apache.wicket.AttributeModifier;
-import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.repeater.RepeatingView;
@@ -43,32 +30,43 @@ import com.evolveum.midpoint.gui.api.model.LoadableModel;
 import com.evolveum.midpoint.gui.api.page.PageBase;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerValueWrapper;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerWrapper;
+import com.evolveum.midpoint.gui.api.prism.wrapper.PrismObjectWrapper;
 import com.evolveum.midpoint.gui.api.util.WebPrismUtil;
 import com.evolveum.midpoint.gui.impl.component.tile.ViewToggle;
 import com.evolveum.midpoint.gui.impl.component.wizard.WizardPanelHelper;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.ResourceDetailsModel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.AbstractResourceWizardBasicPanel;
+import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationWrapperUtils;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.component.SmartAlertGeneratingPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.dto.SmartGeneratingAlertDto;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.component.SimulationActionTaskButton;
 import com.evolveum.midpoint.model.api.AssignmentObjectRelation;
+import com.evolveum.midpoint.prism.Containerable;
+import com.evolveum.midpoint.prism.PrismContainer;
+import com.evolveum.midpoint.prism.PrismContainerValue;
+import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.processor.ResourceObjectTypeIdentification;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.smart.api.SmartIntegrationService;
 import com.evolveum.midpoint.smart.api.info.StatusInfo;
 import com.evolveum.midpoint.task.api.Task;
+import com.evolveum.midpoint.util.exception.CommonException;
 import com.evolveum.midpoint.util.exception.SchemaException;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.application.PanelDisplay;
 import com.evolveum.midpoint.web.application.PanelInstance;
 import com.evolveum.midpoint.web.application.PanelType;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationPanel;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
+import com.evolveum.midpoint.web.component.util.SerializableConsumer;
 import com.evolveum.midpoint.web.component.util.VisibleBehaviour;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavor;
 import com.evolveum.midpoint.web.page.admin.resources.ResourceTaskFlavors;
+import com.evolveum.midpoint.web.session.SuggestionsStorage;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
 /**
@@ -92,6 +90,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
     private static final String ID_TABLE = "table";
 
     IModel<Boolean> switchToggleModel = Model.of(Boolean.TRUE);
+    private SerializableConsumer<AjaxRequestTarget> restartTime;
 
     public CorrelationItemsTableWizardPanel(
             String id,
@@ -130,6 +129,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
 
     private void initCorrelationPanel(String resourceOid) {
         SmartAlertGeneratingPanel aiPanel = createSmartAlertGeneratingPanel(resourceOid, switchToggleModel);
+        this.restartTime = aiPanel::restartTimeBehavior;
         add(aiPanel);
 
         SmartCorrelationTable table = createSmartCorrelationTable(switchToggleModel);
@@ -193,34 +193,25 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
             }
 
             @Override
-            protected @NotNull List<Component> createToolbarButtonsList(String idButton) {
-                List<Component> toolbarButtonsList = super.createToolbarButtonsList(idButton);
-                AjaxIconButton generateButton = new AjaxIconButton(idButton, new Model<>(GuiStyleConstants.CLASS_MAGIC_WAND),
-                        () -> isSuggestionExists(loadExistingSuggestion().getObject())
-                                ? createStringResource("Suggestion.button.showSuggest").getString()
-                                : createStringResource("Suggestion.button.suggest").getString()) {
+            public void onSuggestNewPerformed(AjaxRequestTarget target,
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+                super.onSuggestNewPerformed(target, confirmedOptions);
+                restartTime.accept(target);
+            }
 
-                    @Serial private static final long serialVersionUID = 1L;
+            @Override
+            protected List<ConfirmationOption<DataAccessPermission>> suggestionConfirmationOptions() {
+                return ConfirmationOption.correlationPermissionsOptions();
+            }
 
-                    @Override
-                    public void onClick(AjaxRequestTarget target) {
-                        if (isSuggestionExists(loadExistingSuggestion().getObject())) {
-                            getSwitchToggleModel().setObject(Boolean.TRUE);
-                        } else {
-                            onSuggestNewPerformed(target);
-                        }
+            @Override
+            protected boolean isSuggestButtonVisible() {
+                return !isShowSuggestionsButtonVisible();
+            }
 
-                        target.add(CorrelationItemsTableWizardPanel.this);
-                        refreshAndDetach(target);
-                    }
-                };
-                generateButton.add(new VisibleBehaviour(this::displayNoValuePanel));
-                generateButton.add(AttributeModifier.append("class", "btn btn-default text-ai rounded"));
-                generateButton.setOutputMarkupId(true);
-                generateButton.showTitleAsLabel(true);
-
-                toolbarButtonsList.add(generateButton);
-                return toolbarButtonsList;
+            @Override
+            protected boolean isShowSuggestionsButtonVisible() {
+                return isSuggestionExists(loadExistingSuggestion().getObject());
             }
 
             @Override
@@ -307,13 +298,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                 () -> new SmartGeneratingAlertDto(loadExistingSuggestion(), switchToggleModel, getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
-                // Extract permissions from confirmed options
-                List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
-                        .filter(RequestDetailsRecordDto.RequestRecord::isSelected)
-                        .map(record -> record.option().toSchemaType())
-                        .collect(Collectors.toList());
-
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
                 ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();
                 SmartIntegrationService service = getPageBase().getSmartIntegrationService();
                 getPageBase().taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
@@ -321,24 +306,24 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                                 .withHideSuccess(true)
                                 .withHideInProgress(true))
                         .runVoid((task, result) -> service
-                                .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, permissions, task, result));
+                                .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, task, result));
             }
 
             @Override
-            protected @NotNull IModel<RequestDetailsRecordDto<DataAccessPermission>> getPermissionRecordDtoIModel() {
-                final RequestDetailsRecordDto<DataAccessPermission> requestDetailsRecordDto =
-                        new RequestDetailsRecordDto<>(null, RequestDetailsRecordDto.initDummyCorrelationPermissionData());
-                return () -> requestDetailsRecordDto;
+            protected IModel<List<ConfirmationOption<DataAccessPermission>>> getConfirmationOptions() {
+                final List<ConfirmationOption<DataAccessPermission>> confirmationOptions =
+                        ConfirmationOption.correlationPermissionsOptions();
+                return () -> confirmationOptions;
             }
 
             @Override
-            protected void refreshAssociatedComponents(@NotNull AjaxRequestTarget target) {
+            protected void onRefresh(@NotNull AjaxRequestTarget target) {
                 SmartCorrelationTable smartMappingTable = getTable();
                 smartMappingTable.refreshAndDetach(target);
             }
 
             @Override
-            protected void onFinishActionPerform(AjaxRequestTarget target) {
+            protected void onSuggestionFinish(AjaxRequestTarget target) {
                 getTable().refreshAndDetach(target);
             }
         };

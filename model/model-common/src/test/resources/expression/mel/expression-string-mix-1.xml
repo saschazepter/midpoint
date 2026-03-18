@@ -9,6 +9,6 @@
     <description>Mix of string functions, mostly using CEL-native functions</description>
     <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#mel</language>
     <code>
-        (foo.upperAscii() + " " + foo.lowerAscii() + foo.charAt(0) + string(foo.indexOf('o')) + foo.replace('F','X') + " " ).trim() + "!"
+        (foo.uc() + " " + foo.lc() + foo.charAt(0) + string(foo.indexOf('o')) + foo.replace('F','X') + " " ).trim() + "!"
     </code>
 </script>

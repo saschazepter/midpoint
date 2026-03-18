@@ -7,8 +7,7 @@
 package com.evolveum.midpoint.model.common.expression.script;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertNotNull;
+import static org.testng.AssertJUnit.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -459,6 +458,17 @@ public abstract class AbstractScriptTest extends AbstractUnitTest
             return null;
         }
         return expressionResultList.iterator().next();
+    }
+
+    protected void evaluateAndAssertStringScalarNullExpression(
+            String fileName, VariablesMap variables)
+            throws ObjectNotFoundException, CommunicationException, SecurityViolationException,
+            SchemaException, IOException, ExpressionEvaluationException, ConfigurationException {
+        List<PrismPropertyValue<String>> expressionResultList = evaluateExpression(fileName, DOMUtil.XSD_STRING, true, variables);
+        PrismPropertyValue<String> expressionResult = asScalar(expressionResultList, getTestName());
+        displayValue("Expression result", expressionResult);
+        assertNull("Expression " + getTestName() + " resulted in NON-null value " + expressionResult, expressionResult);
+
     }
 
     protected void evaluateAndAssertStringScalarExpression(

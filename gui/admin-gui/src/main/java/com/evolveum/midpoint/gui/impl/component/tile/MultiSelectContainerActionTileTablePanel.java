@@ -15,11 +15,14 @@ import com.evolveum.midpoint.gui.api.util.WebPrismUtil;
 import com.evolveum.midpoint.gui.impl.component.data.provider.MultivalueContainerListDataProvider;
 
 import com.evolveum.midpoint.gui.impl.component.data.provider.suggestion.StatusAwareDataProvider;
-import com.evolveum.midpoint.web.component.dialog.DataAccessPermission;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsRecordDto;
+import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.component.SmartSuggestButtonWithConfirmation;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationOption;
+import com.evolveum.midpoint.web.component.dialog.privacy.DataAccessPermission;
+import com.evolveum.midpoint.web.component.dialog.ConfirmationWithOptionsDto;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.smart.api.info.StatusInfo;
 
+import com.evolveum.midpoint.web.component.input.ButtonWithConfirmationOptionsDialog;
 import com.evolveum.midpoint.web.model.PrismContainerWrapperModel;
 
 import com.evolveum.midpoint.web.security.MidPointAuthWebSession;
@@ -50,7 +53,6 @@ import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerValueWrapper;
 import com.evolveum.midpoint.gui.api.prism.wrapper.PrismContainerWrapper;
 import com.evolveum.midpoint.gui.impl.component.icon.CompositedIconBuilder;
 import com.evolveum.midpoint.gui.impl.duplication.DuplicationProcessHelper;
-import com.evolveum.midpoint.web.component.dialog.RequestDetailsConfirmationPanel;
 import com.evolveum.midpoint.model.api.AssignmentObjectRelation;
 import com.evolveum.midpoint.prism.Containerable;
 import com.evolveum.midpoint.prism.PrismContainerValue;
@@ -123,7 +125,7 @@ public abstract class MultiSelectContainerActionTileTablePanel<E extends Seriali
     protected List<Component> createToolbarButtonsList(String idButton) {
         List<Component> buttonsList = new ArrayList<>();
         buttonsList.add(createTableActionToolbar(idButton));
-        buttonsList.add(createSuggestObjectButton(idButton));
+        buttonsList.addAll(createSuggestObjectButton(idButton));
         ToggleCheckBoxPanel toggleSuggestionButton = createToggleSuggestionButton(idButton, switchToggleModel);
         toggleSuggestionButton.add(new VisibleBehaviour(() -> !displayNoValuePanel()));
         buttonsList.add(toggleSuggestionButton);
@@ -535,37 +537,49 @@ public abstract class MultiSelectContainerActionTileTablePanel<E extends Seriali
     }
 
     @NotNull
-    protected AjaxIconButton createSuggestObjectButton(String idButton) {
-        AjaxIconButton suggestObjectButton = new AjaxIconButton(idButton, Model.of("fa-solid fa-wand-magic-sparkles"),
-                createStringResource("SmartIntegration.suggestNew")) {
+    protected List<AjaxIconButton> createSuggestObjectButton(String idButton) {
+        AjaxIconButton generateButton = SmartSuggestButtonWithConfirmation.create(idButton,
+                createStringResource("Suggestion.button.suggest"),
+                () -> GuiStyleConstants.CLASS_MAGIC_WAND,
+                suggestionConfirmationOptions(),
+                () -> new ButtonWithConfirmationOptionsDialog.ButtonHandlers<>(target -> {},
+                        this::onSuggestNewPerformed),
+                getPageBase());
 
-            @Serial private static final long serialVersionUID = 1L;
+        generateButton.add(new VisibleBehaviour(() -> this.displayNoValuePanel() && isSuggestButtonVisible()));
+        generateButton.setOutputMarkupId(true);
+        generateButton.showTitleAsLabel(true);
+
+        AjaxIconButton showSuggestionsButton = new AjaxIconButton(idButton,
+                () -> GuiStyleConstants.CLASS_MAGIC_WAND,
+                () -> createStringResource("Suggestion.button.showSuggest").getString()) {
 
             @Override
             public void onClick(AjaxRequestTarget target) {
-                RequestDetailsConfirmationPanel<DataAccessPermission> dialog =
-                        new RequestDetailsConfirmationPanel<>(getPageBase().getMainPopupBodyId(),
-                        buildSmartPermissionRecordDto()) {
-
-                    @Override
-                    public void yesPerformed(AjaxRequestTarget target,
-                            IModel<List<RequestDetailsRecordDto.RequestRecord<DataAccessPermission>>> confirmedOptions) {
-                        onSuggestNewPerformed(target);
-                    }
-                };
-                getPageBase().showMainPopup(dialog, target);
+                getSwitchToggleModel().setObject(Boolean.TRUE);
+                target.add(MultiSelectContainerActionTileTablePanel.this);
+                refreshAndDetach(target);
             }
         };
+        showSuggestionsButton.add(new VisibleBehaviour(() -> displayNoValuePanel()
+                && isShowSuggestionsButtonVisible()));
+        showSuggestionsButton.add(AttributeModifier.append("class", "mx-2 btn rounded bg-purple"));
+        showSuggestionsButton.setOutputMarkupId(true);
+        showSuggestionsButton.showTitleAsLabel(true);
 
-        suggestObjectButton.showTitleAsLabel(true);
-        suggestObjectButton.add(AttributeAppender.replace("class", "btn btn-default rounded mr-2"));
-        suggestObjectButton.add(new VisibleBehaviour(this::isSuggestButtonVisible));
-        suggestObjectButton.setOutputMarkupId(true);
-        return suggestObjectButton;
+        return List.of(generateButton, showSuggestionsButton);
     }
 
-    protected IModel<RequestDetailsRecordDto<DataAccessPermission>> buildSmartPermissionRecordDto() {
-        return () -> new RequestDetailsRecordDto<>(null, null);
+    protected IModel<ConfirmationWithOptionsDto<DataAccessPermission>> buildSmartPermissionRecordDto() {
+        final ConfirmationWithOptionsDto<DataAccessPermission> confirmationWithOptionsDto =
+                ConfirmationWithOptionsDto.<DataAccessPermission>builder()
+                        .confirmationTitle(createStringResource("SmartSuggestConfirmationPanel.title"))
+                        .confirmationSubtitle(createStringResource("SmartSuggestConfirmationPanel.subtitle"))
+                        .confirmationOptionsTitle(createStringResource("SmartSuggestConfirmationPanel.request.component.title"))
+                        .confirmationInfoMessage(createStringResource("SmartSuggestConfirmationPanel.infoMessage"))
+                        .confirmationOptions(Collections.emptyList())
+                        .build();
+        return () -> confirmationWithOptionsDto;
     }
 
     @NotNull
@@ -628,7 +642,16 @@ public abstract class MultiSelectContainerActionTileTablePanel<E extends Seriali
         return false;
     }
 
-    protected void onSuggestNewPerformed(AjaxRequestTarget target) {
+    protected boolean isShowSuggestionsButtonVisible() {
+        return false;
+    }
+
+    protected void onSuggestNewPerformed(AjaxRequestTarget target,
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+    }
+
+    protected List<ConfirmationOption<DataAccessPermission>> suggestionConfirmationOptions() {
+        return Collections.emptyList();
     }
 
     protected boolean isToggleSuggestionVisible() {

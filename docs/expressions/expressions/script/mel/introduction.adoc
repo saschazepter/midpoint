@@ -129,8 +129,8 @@ CEL interpreter that evaluates MEL expressions assumes that the data structures 
 E.g. the expression above assumes that variable `focus` contains structured data value, which has field `activation`, which has field `administrativeStatus`.
 The expression fails if any of that assumptions is false, e.g. if variable `focus` does not contain a value (is `null`).
 
-However, data are seldom complete.
-The data are only partially populated in a common case.
+However, the data are seldom complete.
+In usual case, the data are only partially populated.
 E.g. a focus may not have activation at all, and objects with `administrativeStatus` explicitly defined are quite rare.
 MEL allows specification of _optional resolution_ by adding question mark (`?`) after the dot when working with incomplete data.
 
@@ -230,8 +230,6 @@ MEL provides several functions for regular expression matching and replacement:
 telephoneNumber.matches('^[0-9]+$')
 ----
 
-// TODO: describe regex extension
-
 MEL regular expressions are following link:https://github.com/google/re2/blob/main/README.md[RE2] syntax, which is basically a simplified Perl-compatible regular expression syntax.
 
 Many string-like values in midPoint are provided in a form of xref:/midpoint/reference/concepts/polystring/[polystrings].
@@ -297,7 +295,7 @@ When a `null` value is provided as an argument, default string is returned inste
 It only works with some data types.
 It does not handle `null` values well.
 | Almost never.
-It exists because it came with CEL.
+It exists just because it came with CEL.
 
 |===
 
@@ -371,7 +369,6 @@ However, in this case it is even easier to take advantage of the `default()` fun
 ----
 default(fullName, 'John Doe')
 ----
-
 ====
 
 While conditionals look straightforward, they tend to complicate the expressions.
@@ -558,24 +555,6 @@ default(focus.?lifecycleState, 'active')
 The expression above will always return a valid string value, even in case that `focus` variable is `null`, or that the object present in `focus` variable does not have `lifecycleState` property.
 
 While MEL provides functions that work reliably (`isNull()`, `isPresent()`) and even some convenience functions (`default()`) which make it easy to work with null and optional values, there is still one drawback given by the nature of CEL.
-While the `.?` operator works reliably with structured data, it cannot be used for function invocation.
-E.g. the following expression is invalid:
-
-.Invalid expression
-[source,mel]
-----
-foo.?contains('#')
-----
-
-Assuming that `foo` is a string variable, which may either contain a string or `null`, the expression above is specifying execution of `contains()` function on that variable.
-However, the use of `.?` operator in this way is illegal in CEL, and currently there is no practical way for MEL extensions to implement this behavior.
-Therefore, the only practical option in this case is to explicitly check for `null` value using a conditional operator (`?:`):
-
-.Correct expression
-[source,mel]
-----
-isPresent(foo) ? foo.contains('#') : null
-----
 
 == Language Extensions
 
@@ -608,7 +587,6 @@ Functions of the `log` extensions can be used to record errors, as well as troub
 | Secret providers
 | Secret extension is used to interact with secret providers.
 
-
 | _object_ +
 (no prefix)
 | Object data
@@ -617,6 +595,14 @@ such as resources or shadows.
 
 |===
 
+See xref:../specification/[MEL language specification] for detailed list of functions provided by individual extensions.
+
+== Miscellaneous Notes
+
+* Errors produced by CEL engine which evaluates MEL expressions can be very cryptic and confusing.
+See xref:../troubleshooting/[Troubleshooting MEL guide] for a list of common errors, their explanation and remediation tips.
+
 == See Also
 
 * xref:../specification/[MidPoint Expression Language Specification]
+* xref:../troubleshooting/[Troubleshooting MidPoint Expression Language]

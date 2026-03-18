@@ -37,9 +37,18 @@ Solution: `input.?orig`
 Conditional must have the same data type in both branches.
 Use string() or stringify().
 
+`No matching overload for function '_+_'. Overload candidates: add_string`
+'Came from ' + input ->
 
 // TODO: has() function - tricky: do not use with conditionals
 
 range() function, which creates a list? e.g. [1,2,3,4,5]
 Could be used to construct a list of candidates, e.g.
 range(5).map(x, "user%s".format(x)).filter(x, checkUnique(x))
+
+== Differences from CEL
+
+* Better support for nullable types/values
+
+* substring() does not die when index is out of range.
+Empty string is returned instead.

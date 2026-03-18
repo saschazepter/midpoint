@@ -43,3 +43,5 @@ focus.givenName + ' ' + focus.familyName
 == See Also
 
 * xref:introduction/[MidPoint Expression Language Introduction]
+* xref:specification/[MidPoint Expression Language Specification]
+* xref:troubleshooting/[Troubleshooting MidPoint Expression Language]

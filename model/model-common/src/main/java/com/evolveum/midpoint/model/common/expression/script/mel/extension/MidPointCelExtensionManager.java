@@ -14,7 +14,6 @@ import com.evolveum.midpoint.prism.crypto.Protector;
 
 import com.evolveum.midpoint.schema.AccessDecision;
 import com.evolveum.midpoint.schema.expression.ExpressionEvaluatorProfile;
-import com.evolveum.midpoint.schema.expression.ExpressionPermissionProfile;
 import com.evolveum.midpoint.schema.expression.ExpressionProfile;
 import com.evolveum.midpoint.schema.expression.ScriptLanguageExpressionProfile;
 import com.evolveum.midpoint.util.logging.Trace;
@@ -51,7 +50,10 @@ public class MidPointCelExtensionManager {
 
     private void initializeExtensions() {
 
-        registerLibrary("strings", CelExtensions.strings());
+        // Note: We do NOT want stock CelExtensions.strings() (CelStringExtensions) here!
+        // We are implementing string operations slightly differently.
+        // E.g. substring() does not die when indexes point beyond end of string.
+        // Our versions of string operations is implemented in CelMelExtensions.
         registerLibrary("bindings", CelExtensions.bindings());
         registerLibrary("math", CelExtensions.math(celOptions));
         registerLibrary("encoders", CelExtensions.encoders(celOptions));
@@ -61,8 +63,7 @@ public class MidPointCelExtensionManager {
         registerLibrary("comprehensions", CelExtensions.comprehensions());
         registerLibrary("optional", CelExtensions.optional());
 
-        registerLibrary(CelMelExtensions.library(protector, basicExpressionFunctions));
-        registerLibrary(CelPolyStringExtensions.library(celOptions, basicExpressionFunctions));
+        registerLibrary(CelMelExtensions.library(celOptions, protector, basicExpressionFunctions));
         registerLibrary(CelFormatExtensions.library(basicExpressionFunctions));
         registerLibrary(CelLdapExtensions.library(basicExpressionFunctions));
         registerLibrary(CelObjectExtensions.library());

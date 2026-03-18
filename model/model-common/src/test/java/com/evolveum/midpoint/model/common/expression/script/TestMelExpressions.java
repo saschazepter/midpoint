@@ -49,6 +49,8 @@ import com.evolveum.prism.xml.ns._public.types_3.PolyStringType;
 import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.namespace.QName;
 
+import static com.evolveum.midpoint.prism.util.PrismTestUtil.createPolyStringType;
+
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -82,13 +84,37 @@ public class TestMelExpressions extends AbstractScriptTest {
     @Test
     public void testUserGivenNameNull() throws Exception {
         PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
-        VariablesMap variables = createVariables(
-                ExpressionConstants.VAR_FOCUS, null, userJack.getDefinition()
+        evaluateAndAssertStringScalarNullExpression("expression-user-given-name.xml",
+            createVariables(ExpressionConstants.VAR_FOCUS, null, userJack.getDefinition())
         );
-        List<PrismPropertyValue<String>> expressionResultList = evaluateExpression("expression-user-given-name.xml", DOMUtil.XSD_STRING, true, variables);
-        PrismPropertyValue<String> expressionResult = asScalar(expressionResultList, getTestName());
-        displayValue("Expression result", expressionResult);
-        assertNull("Expression " + getTestName() + " resulted in NON-null value " + expressionResult, expressionResult);
+    }
+
+    @Test
+    public void testUserGivenNameIsNullNull1() throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        evaluateAndAssertBooleanScalarExpression(
+                "expression-user-given-name-isnull.xml",
+                createVariables(ExpressionConstants.VAR_FOCUS, null, userJack.getDefinition()),
+                true);
+    }
+
+    @Test
+    public void testUserGivenNameIsNullNull2() throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        userJack.asObjectable().setGivenName(null);
+        evaluateAndAssertBooleanScalarExpression(
+                "expression-user-given-name-isnull.xml",
+                createVariables(ExpressionConstants.VAR_FOCUS, userJack, userJack.getDefinition()),
+                true);
+    }
+
+    @Test
+    public void testUserGivenNameIsNullFalse() throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        evaluateAndAssertBooleanScalarExpression(
+                "expression-user-given-name-isnull.xml",
+                createVariables(ExpressionConstants.VAR_FOCUS, userJack, userJack.getDefinition()),
+                false);
     }
 
     @Test
@@ -172,7 +198,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-1.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.TRUE);
@@ -183,7 +209,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-1.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.FALSE);
@@ -238,7 +264,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-2.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.TRUE);
@@ -249,7 +275,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-2.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.FALSE);
@@ -260,7 +286,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-foo-equals-bar.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
                         "bar", "FOO", PrimitiveType.STRING
                 ),
                 Boolean.TRUE);
@@ -271,7 +297,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-foo-equals-bar.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
                         "bar", "Bar", PrimitiveType.STRING
                 ),
                 Boolean.FALSE);
@@ -283,7 +309,7 @@ public class TestMelExpressions extends AbstractScriptTest {
                 "expression-foo-equals-bar.xml",
                 createVariables(
                         "foo", "FOO", PrimitiveType.STRING,
-                        "bar", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE
+                        "bar", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE
                 ),
                 Boolean.TRUE);
     }
@@ -294,7 +320,7 @@ public class TestMelExpressions extends AbstractScriptTest {
                 "expression-foo-equals-bar.xml",
                 createVariables(
                         "foo", "FOO", PrimitiveType.STRING,
-                        "bar", PrismTestUtil.createPolyStringType("Bar"), PolyStringType.COMPLEX_TYPE
+                        "bar", createPolyStringType("Bar"), PolyStringType.COMPLEX_TYPE
                 ),
                 Boolean.FALSE);
     }
@@ -304,8 +330,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-foo-equals-bar.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE
                 ),
                 Boolean.TRUE);
     }
@@ -315,8 +341,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-foo-equals-bar.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
                 ),
                 Boolean.FALSE);
     }
@@ -415,7 +441,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-stringify-1.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.TRUE);
@@ -426,7 +452,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-stringify-1.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.FALSE);
@@ -481,7 +507,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-stringify-2.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.TRUE);
@@ -492,7 +518,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertBooleanScalarExpression(
                 "expression-polystring-equals-stringify-2.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOOBAR"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 Boolean.FALSE);
@@ -525,7 +551,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-foo-plus-bar.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 "FOOBAR");
@@ -537,7 +563,7 @@ public class TestMelExpressions extends AbstractScriptTest {
                 "expression-foo-plus-bar.xml",
                 createVariables(
                         "foo", "FOO", PrimitiveType.STRING,
-                        "bar", PrismTestUtil.createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
+                        "bar", createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "FOOBAR");
     }
@@ -547,8 +573,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-foo-plus-bar.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("FOO"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "FOOBAR");
     }
@@ -611,7 +637,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-default.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("polyFoo"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("polyFoo"), PolyStringType.COMPLEX_TYPE
                 ),
                 "Behold the polyFoo");
     }
@@ -631,7 +657,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-norm.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType(" FoôBÁR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType(" FoôBÁR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "foobar");
     }
@@ -654,7 +680,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-ascii.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType(" FoôBÁR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType(" FoôBÁR"), PolyStringType.COMPLEX_TYPE
                 ),
                 " FooBAR");
     }
@@ -677,7 +703,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-empty-blank-global.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foobar"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foobar"), PolyStringType.COMPLEX_TYPE
                 ),
                 "false/false");
     }
@@ -697,7 +723,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-empty-blank-member.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("  "), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("  "), PolyStringType.COMPLEX_TYPE
                 ),
                 "false/true");
     }
@@ -721,7 +747,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-empty-blank-member.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foobar"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foobar"), PolyStringType.COMPLEX_TYPE
                 ),
                 "false/false");
     }
@@ -752,14 +778,36 @@ public class TestMelExpressions extends AbstractScriptTest {
     }
 
     @Test
+    public void testExpressionStringMix1StringNational() throws Exception {
+        evaluateAndAssertStringScalarExpression(
+                "expression-string-mix-1.xml",
+                createVariables(
+                        "foo", "TélékÉ", PrimitiveType.STRING,
+                        "bar", "TölökÓ", PrimitiveType.STRING
+                ),
+                "TÉLÉKÉ télékéT-1TélékÉ!");
+    }
+
+    @Test
     public void testExpressionStringMix1PolyString() throws Exception {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-mix-1.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 "FOO fooF1Xoo!");
+    }
+
+    @Test
+    public void testExpressionStringMix1PolyStringNational() throws Exception {
+        evaluateAndAssertStringScalarExpression(
+                "expression-string-mix-1.xml",
+                createVariables(
+                        "foo", createPolyStringType("TélékÉ"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("TölökÓ"), PolyStringType.COMPLEX_TYPE
+                ),
+                "TÉLÉKÉ télékéT-1TélékÉ!");
     }
 
     @Test
@@ -767,8 +815,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-mix-2.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType(" FOOBAR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType(" FOOBAR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "3=3 : FOOBARoo/FO");
     }
@@ -792,8 +840,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-mix-3.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType("FooBar"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("FooBar"), PolyStringType.COMPLEX_TYPE
                 ),
                 "true/false : true/false : true/false : true/false");
     }
@@ -817,8 +865,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-contains.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType("FooBar"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("FooBar"), PolyStringType.COMPLEX_TYPE
                 ),
                 "true/false : false/false : true/false : true/false");
     }
@@ -842,7 +890,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringListExpression(
                 "expression-string-split.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo,Bar,Baz"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foo,Bar,Baz"), PolyStringType.COMPLEX_TYPE
                 ),
                 "Foo", "Bar", "Baz");
     }
@@ -863,8 +911,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-concatname.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "Foo BAR");
     }
@@ -874,7 +922,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-concatname.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 "Foo BAR");
@@ -896,8 +944,8 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-concat.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
-                        "bar", PrismTestUtil.createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "bar", createPolyStringType("BAR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "FooBAR");
     }
@@ -907,18 +955,194 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-string-concat.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
                         "bar", "BAR", PrimitiveType.STRING
                 ),
                 "FooBAR");
     }
 
+
     @Test
-    public void testUsername() throws Exception {
+    public void testExpressionStringSubstringStringValid() throws Exception {
         evaluateAndAssertStringScalarExpression(
-                "expression-username.xml",
-                createUserScriptVariables(),
+                "expression-string-substring.xml",
+                createVariables(
+                        "foo", "FooBar", PrimitiveType.STRING,
+                        "i", 0, PrimitiveType.INT,
+                        "j", 2, PrimitiveType.INT
+                ),
+                "Fo");
+    }
+
+    @Test
+    public void testExpressionStringSubstringPolyStringValid() throws Exception {
+        evaluateAndAssertStringScalarExpression(
+                "expression-string-substring.xml",
+                createVariables(
+                        "foo", createPolyStringType("FooBar"), PolyStringType.COMPLEX_TYPE,
+                        "i", 0, PrimitiveType.INT,
+                        "j", 2, PrimitiveType.INT
+                ),
+                "Fo");
+    }
+
+    // End index beyond end of string
+    @Test
+    public void testExpressionStringSubstringStringBeyond() throws Exception {
+        evaluateAndAssertStringScalarExpression(
+                "expression-string-substring.xml",
+                createVariables(
+                        "foo", "FooBar", PrimitiveType.STRING,
+                        "i", 2, PrimitiveType.INT,
+                        "j", 42, PrimitiveType.INT
+                ),
+                "oBar");
+    }
+
+    // End index beyond end of string
+    @Test
+    public void testExpressionStringSubstringPolyStringBeyond() throws Exception {
+        evaluateAndAssertStringScalarExpression(
+                "expression-string-substring.xml",
+                createVariables(
+                        "foo", createPolyStringType("FooBar"), PolyStringType.COMPLEX_TYPE,
+                        "i", 2, PrimitiveType.INT,
+                        "j", 42, PrimitiveType.INT
+                ),
+                "oBar");
+    }
+
+    // End index beyond end of string
+    @Test
+    public void testExpressionStringSubstringStringFirstCharEmpty() throws Exception {
+        evaluateAndAssertStringScalarExpression(
+                "expression-string-substring.xml",
+                createVariables(
+                        "foo", "", PrimitiveType.STRING,
+                        "i", 0, PrimitiveType.INT,
+                        "j", 1, PrimitiveType.INT
+                ),
+                "");
+    }
+
+    // End index beyond end of string
+    @Test
+    public void testExpressionStringSubstringPolyStringFirstCharEmpty() throws Exception {
+        evaluateAndAssertStringScalarExpression(
+                "expression-string-substring.xml",
+                createVariables(
+                        "foo", createPolyStringType(""), PolyStringType.COMPLEX_TYPE,
+                        "i", 0, PrimitiveType.INT,
+                        "j", 1, PrimitiveType.INT
+                ),
+                "");
+    }
+
+
+    @Test
+    public void testUsernameJackSubstring() throws Exception {
+        usernameJack("expression-username-substring.xml");
+    }
+
+    @Test
+    public void testUsernameJackFormat() throws Exception {
+        usernameJack("expression-username-format.xml");
+    }
+
+    public void usernameJack(String expressionFile) throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        evaluateAndAssertStringScalarExpression(
+                expressionFile,
+                createJackVariables(userJack, ""),
                 "jsparrow");
+    }
+
+    @Test
+    public void testUsernameMadJackSubstring() throws Exception {
+        usernameMadJack("expression-username-substring.xml");
+    }
+
+    @Test
+    public void testUsernameMadJackFormat() throws Exception {
+        usernameMadJack("expression-username-format.xml");
+    }
+
+    public void usernameMadJack(String expressionFile) throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        userJack.asObjectable().setGivenName(createPolyStringType(" J AČk\t"));
+        userJack.asObjectable().setFamilyName(createPolyStringType("\u00A0Špá\trr oW "));
+        evaluateAndAssertStringScalarExpression(
+                expressionFile,
+                createJackVariables(userJack, ""),
+                "jsparrow");
+    }
+
+    @Test
+    public void testUsernameShortJackSubstring() throws Exception {
+        usernameShortJack("expression-username-substring.xml");
+    }
+
+    @Test
+    public void testUsernameShortJackFormat() throws Exception {
+        usernameShortJack("expression-username-format.xml");
+    }
+
+    public void usernameShortJack(String expressionFile) throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        userJack.asObjectable().setFamilyName(createPolyStringType("Spa"));
+        evaluateAndAssertStringScalarExpression(
+                expressionFile,
+                createJackVariables(userJack, ""),
+                "jspa");
+    }
+
+    @Test
+    public void testUsernameSparrowSubstring() throws Exception {
+        usernameSparrow("expression-username-substring.xml");
+    }
+
+    @Test
+    public void testUsernameSparrowFormat() throws Exception {
+        usernameSparrow("expression-username-format.xml");
+    }
+
+    public void usernameSparrow(String expressionFile) throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        userJack.asObjectable().setGivenName(null);
+        evaluateAndAssertStringScalarExpression(
+                expressionFile,
+                createJackVariables(userJack, ""),
+                "sparrow");
+    }
+
+
+    @Test
+    public void testUsernameNullSubstring() throws Exception {
+        usernameNull("expression-username-substring.xml");
+    }
+
+    @Test
+    public void testUsernameNullFormat() throws Exception {
+        usernameNull("expression-username-format.xml");
+    }
+
+    public void usernameNull(String expressionFile) throws Exception {
+        PrismObject<UserType> userJack = prismContext.parseObject(USER_JACK_FILE);
+        userJack.asObjectable().setGivenName(null);
+        evaluateAndAssertStringScalarExpression(
+                expressionFile,
+                createVariables(
+                        ExpressionConstants.VAR_FOCUS, null, userJack.getDefinition(),
+                        ExpressionConstants.VAR_ITERATION_TOKEN, "", PrimitiveType.STRING
+                ),
+                "");
+    }
+
+    private VariablesMap createJackVariables(PrismObject<UserType> userJack, String iterationToken) {
+        return createVariables(
+                ExpressionConstants.VAR_FOCUS, userJack, userJack.getDefinition(),
+                ExpressionConstants.VAR_ITERATION_TOKEN, iterationToken, PrimitiveType.STRING
+        );
     }
 
     @Test
@@ -1356,7 +1580,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 fileName,
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType(FULL_NAME_RS), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType(FULL_NAME_RS), PolyStringType.COMPLEX_TYPE
                 ),
                 expecetedResult);
     }
@@ -1521,7 +1745,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-ldap-compose-dn-mask.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
                         "bar", "FooBar", PrimitiveType.STRING,
                         "ldap", "ouch", PrimitiveType.STRING
                 ),
@@ -1537,7 +1761,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-ldap-compose-dn-mask.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
                         "bar", "FooBar", PrimitiveType.STRING,
                         "ldap",
                         MiscSchemaUtil.createObjectReference(USER_JACK_OID, UserType.COMPLEX_TYPE),
@@ -1552,7 +1776,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-ldap-compose-dn.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
                         "bar", "FooBar", PrimitiveType.STRING
                 ),
                 "cn=Foo,o=FooBar");
@@ -1563,7 +1787,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         evaluateAndAssertStringScalarExpression(
                 "expression-ldap-compose-dn-with-suffix.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
+                        "foo", createPolyStringType("Foo"), PolyStringType.COMPLEX_TYPE,
                         "bar", "dc=example,dc=com", PrimitiveType.STRING
                 ),
                 "cn=Foo,dc=example,dc=com");
@@ -1623,7 +1847,7 @@ public class TestMelExpressions extends AbstractScriptTest {
     public void testEncryptPolyString() throws Exception {
         encryptTest(
                 createVariables(
-                        "psswd", PrismTestUtil.createPolyStringType("changeMe!"), PolyStringType.COMPLEX_TYPE
+                        "psswd", createPolyStringType("changeMe!"), PolyStringType.COMPLEX_TYPE
                 ), "changeMe!");
     }
 
@@ -1852,7 +2076,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         executeCachingScript(
                 "expression-string-ascii.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FoôBÁR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("FoôBÁR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "FooBAR",
                 2, 3, "3-polystring");
@@ -1861,7 +2085,7 @@ public class TestMelExpressions extends AbstractScriptTest {
         executeCachingScript(
                 "expression-string-ascii.xml",
                 createVariables(
-                        "foo", PrismTestUtil.createPolyStringType("FoôBÁR"), PolyStringType.COMPLEX_TYPE
+                        "foo", createPolyStringType("FoôBÁR"), PolyStringType.COMPLEX_TYPE
                 ),
                 "FooBAR",
                 2, 4, "4-polystring");

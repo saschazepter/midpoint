@@ -441,20 +441,76 @@ public class ProcessedObjectImpl<O extends ObjectType> implements ProcessedObjec
         return processedObject;
     }
 
-    private static <T extends ObjectType> String determineItemValueChangesEventMarks(PrismObject<T> before,
+    /**
+     * Determines the event mark describing how item values changed between two object states.
+     *
+     * <p>The method compares {@code before} and {@code after} using
+     * {@link EquivalenceStrategy#REAL_VALUE_CONSIDER_DIFFERENT_IDS}. It returns a mark
+     * representing whether values were unchanged, added, removed, or modified.</p>
+     *
+     * @param before object state before the change
+     * @param after object state after the change
+     * @return OID of the corresponding system event mark
+     */
+    private static <T extends ObjectType> String determineItemValueChangesEventMarks(@NotNull PrismObject<T> before,
             PrismObject<T> after) {
         final List<? extends ItemDelta> modifications = before.diffModifications(after,
                 EquivalenceStrategy.REAL_VALUE_CONSIDER_DIFFERENT_IDS);
+
         if (modifications.isEmpty()) {
             return SystemObjectsType.MARK_ITEM_VALUE_NOT_CHANGED.value();
         }
+
+        if (modifiesMultivalue(before, after, modifications)) {
+            return SystemObjectsType.MARK_ITEM_VALUE_MODIFIED.value();
+        }
+
         if (modifications.stream().allMatch(ItemDelta::isAdd)) {
             return SystemObjectsType.MARK_ITEM_VALUE_ADDED.value();
         }
+
         if (modifications.stream().allMatch(ItemDelta::isDelete)) {
             return SystemObjectsType.MARK_ITEM_VALUE_REMOVED.value();
         }
+
         return SystemObjectsType.MARK_ITEM_VALUE_MODIFIED.value();
+    }
+
+    /**
+     * Returns {@code true} if the change modifies a multi-value item while preserving
+     * at least one existing value.
+     *
+     * <p>This means the item is neither a pure add nor a pure delete operation,
+     * because some values remain unchanged between {@code before} and {@code after}.</p>
+     *
+     * @param before object state before the change
+     * @param after object state after the change
+     * @param modifications item deltas detected between the objects
+     * @return {@code true} if the modified item still contains unchanged values
+     */
+    private static <T extends ObjectType> boolean modifiesMultivalue(
+            PrismObject<T> before,
+            PrismObject<T> after,
+            @NotNull List<? extends ItemDelta> modifications) {
+
+        for (ItemDelta<?, ?> modification : modifications) {
+            Item<?, ?> beforeItem = before.findItem(modification.getPath());
+            Item<?, ?> afterItem = after.findItem(modification.getPath());
+
+            if (beforeItem == null || afterItem == null) {
+                continue;
+            }
+
+            for (PrismValue beforeValue : beforeItem.getValues()) {
+                for (PrismValue afterValue : afterItem.getValues()) {
+                    if (beforeValue.equals(afterValue, EquivalenceStrategy.REAL_VALUE_CONSIDER_DIFFERENT_IDS)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private static List<String> determineShadowEventMarks(ShadowType before, ShadowType after) {

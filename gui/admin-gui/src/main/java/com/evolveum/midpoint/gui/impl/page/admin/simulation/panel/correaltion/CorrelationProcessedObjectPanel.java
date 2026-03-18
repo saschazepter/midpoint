@@ -21,6 +21,7 @@ import com.evolveum.midpoint.gui.impl.component.ContainerableListPanel;
 import com.evolveum.midpoint.gui.impl.component.icon.CompositedIconBuilder;
 import com.evolveum.midpoint.gui.impl.component.search.Search;
 import com.evolveum.midpoint.gui.impl.component.search.SearchContext;
+import com.evolveum.midpoint.gui.impl.component.wizard.AbstractWizardBasicInitializer;
 import com.evolveum.midpoint.gui.impl.page.admin.mark.component.MarksOfObjectListPopupPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.ProcessedObjectsPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.ProcessedObjectsProvider;
@@ -61,6 +62,7 @@ import org.apache.wicket.behavior.AttributeAppender;
 import org.apache.wicket.extensions.markup.html.repeater.data.grid.ICellPopulator;
 import org.apache.wicket.extensions.markup.html.repeater.data.table.AbstractColumn;
 import org.apache.wicket.extensions.markup.html.repeater.data.table.IColumn;
+import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.repeater.Item;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.LoadableDetachableModel;
@@ -194,7 +196,7 @@ public abstract class CorrelationProcessedObjectPanel
                         IModel<SelectableBean<SimulationResultProcessedObjectType>> selected = getRowModel();
                         if (selected == null) {
                             warn(getString("MainObjectListPanel.message.noFocusSelected"));
-                            target.add(getPageBase().getFeedbackPanel());
+                            target.add(getFeedback());
                             return;
                         }
 
@@ -202,7 +204,7 @@ public abstract class CorrelationProcessedObjectPanel
 
                         if (focusModel.getObject() == null) {
                             warn(getString("ProcessedObjectsPanel.message.noObjectFound", selected.getObject().getValue().getOid()));
-                            target.add(getPageBase().getFeedbackPanel());
+                            target.add(getFeedback());
                             return;
                         }
 
@@ -278,7 +280,7 @@ public abstract class CorrelationProcessedObjectPanel
 
         if (selected == null || selected.isEmpty()) {
             page.warn(getString("ResourceContentPanel.message.markShadowPerformed.warning"));
-            target.add(page.getFeedbackPanel());
+            target.add(getFeedback());
             return;
         }
 
@@ -320,13 +322,16 @@ public abstract class CorrelationProcessedObjectPanel
 
         result.computeStatusIfUnknown();
         page.showResult(result);
-
+        target.add(getFeedback());
         refreshTable(target);
-        target.add(page.getFeedbackPanel());
     }
 
-    private void markObjects(IModel<SelectableBean<SimulationResultProcessedObjectType>> model, AjaxRequestTarget target) {
-        markObjects(model, Collections.singletonList(SystemObjectsType.MARK_PROTECTED.value()), target);
+    protected WebMarkupContainer getFeedback() {
+        AbstractWizardBasicInitializer parent = this.findParent(AbstractWizardBasicInitializer.class);
+        if (parent == null) {
+            return (WebMarkupContainer) getFeedbackPanel();
+        }
+        return this.findParent(AbstractWizardBasicInitializer.class).getFeedback();
     }
 
     @Override
@@ -374,8 +379,8 @@ public abstract class CorrelationProcessedObjectPanel
     }
 
     @Override
-    protected IColumn<SelectableBean<SimulationResultProcessedObjectType>, String> createCheckboxColumn() {
-        return null; // Disable selection for now. Do we want to support actions (e.g. marking)?
+    protected int getCollapsibleToggleColumnIndex() {
+        return 1;
     }
 
     @Override

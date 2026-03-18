@@ -141,7 +141,7 @@
                         <allowEmptyValues>false</allowEmptyValues>
                         <script>
                             <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#mel</language>
-                            <code>'Came from ' + input</code>
+                            <code>'Came from %s'.format(input)</code>
                         </script>
                     </expression>
                     <target>
@@ -161,9 +161,7 @@
                                 MEL cannot really do that, leaving that to the Groovy version of the resource.
                             </documentation>
                             <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#mel</language>
-                            <code>
-                                'The crew of ' + input
-                            </code>
+                            <code>'The crew of %s'.format(input)</code>
                         </script>
                     </expression>
                     <target>

@@ -33,7 +33,7 @@ public abstract class AbstractWizardBasicInitializer extends BasePanel {
     private static final String ID_TEXT = "text";
     private static final String ID_SUBTEXT = "subText";
     private static final String ID_SUBTEXT_MORE = "subTextMore";
-    private static final String ID_FEEDBACK_CONTAINER = "feedbackContainer";
+    public static final String ID_FEEDBACK_CONTAINER = "feedbackContainer";
     private static final String ID_FEEDBACK = "feedback";
     private static final String ID_BUTTONS = "buttons";
     private static final String ID_BUTTONS_CONTAINER = "buttonsContainer";
@@ -243,7 +243,7 @@ public abstract class AbstractWizardBasicInitializer extends BasePanel {
         return true;
     }
 
-    protected WebMarkupContainer getFeedback() {
+    public WebMarkupContainer getFeedback() {
         return (WebMarkupContainer) get(ID_FEEDBACK_CONTAINER);
     }
 }

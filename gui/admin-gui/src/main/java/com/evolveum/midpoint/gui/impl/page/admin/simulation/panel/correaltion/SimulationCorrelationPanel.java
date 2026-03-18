@@ -6,8 +6,8 @@
 
 package com.evolveum.midpoint.gui.impl.page.admin.simulation.panel.correaltion;
 
-import static com.evolveum.midpoint.gui.impl.page.admin.simulation.util.CorrelationUtil.buildWidget;
 import static com.evolveum.midpoint.gui.impl.page.admin.simulation.util.SimulationWebUtil.loadAvailableMarksModel;
+import static com.evolveum.midpoint.gui.impl.page.admin.simulation.util.SimulationWebUtil.processedObjectsCountWidget;
 import static com.evolveum.midpoint.xml.ns._public.common.common_3.SystemObjectsType.*;
 
 import java.math.BigDecimal;
@@ -33,11 +33,7 @@ import com.evolveum.midpoint.gui.impl.component.icon.CompositedIconBuilder;
 import com.evolveum.midpoint.gui.impl.component.icon.IconCssStyle;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.page.PageSimulationResultObject;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.widget.MetricWidgetPanel;
-import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.SimulationMetricValuesTypeUtil;
-import com.evolveum.midpoint.task.api.Task;
-import com.evolveum.midpoint.util.exception.CommonException;
-import com.evolveum.midpoint.util.logging.LoggingUtils;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.component.form.MidpointForm;
@@ -107,32 +103,13 @@ public class SimulationCorrelationPanel extends BasePanel<SimulationResultType> 
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList());
 
-                final DashboardWidgetType totalProcessedWidget = processedObjectsCountWidget();
+                final DashboardWidgetType totalProcessedWidget = processedObjectsCountWidget(getPageBase(), getModelObject(), LOGGER);
                 if (totalProcessedWidget != null) {
                     collect.add(totalProcessedWidget);
                 }
                 return collect;
             }
         };
-    }
-
-    private DashboardWidgetType processedObjectsCountWidget() {
-        final Task countTask = getPageBase().createSimpleTask("Count processed objects.");
-        final OperationResult result = countTask.getResult();
-        try {
-            final int processedObjectsCount = getPageBase().getModelService().countContainers(
-                    SimulationResultProcessedObjectType.class, getPrismContext()
-                            .queryFor(SimulationResultProcessedObjectType.class)
-                            .ownedBy(SimulationResultType.class).id(getModelObject().getOid())
-                            .build(),
-                    null, countTask, result);
-            return buildWidget(createStringResource("SimulationCorrelationPanel.total").getString(),
-                    "SimulationCorrelationPanel.total.help", "fa fa-cube metric-icon info", processedObjectsCount);
-        } catch (CommonException e) {
-            result.recordFatalError("Can't count processed objects.");
-            LoggingUtils.logUnexpectedException(LOGGER, "Unable to count processed objects", e);
-        }
-        return null;
     }
 
     private void initDashboard(@NotNull MidpointForm<?> form) {

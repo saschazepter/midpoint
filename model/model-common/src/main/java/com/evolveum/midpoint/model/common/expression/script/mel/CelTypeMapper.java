@@ -323,7 +323,7 @@ public class CelTypeMapper implements CelTypeProvider  {
         if (isCellNull(celValue)) {
             return null;
         }
-        if (celValue instanceof Optional<?> optional) {
+        while (celValue instanceof Optional<?> optional) {
             if (optional.isEmpty()) {
                 return null;
             } else {

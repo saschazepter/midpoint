@@ -11,6 +11,7 @@ import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schem
 
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.panel.SimulationResultPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.simulation.panel.correaltion.SimulationCorrelationPanel;
+import com.evolveum.midpoint.gui.impl.page.admin.simulation.panel.mapping.SimulationMappingPanel;
 import com.evolveum.midpoint.web.component.AjaxIconButton;
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -28,6 +29,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 import org.jetbrains.annotations.Nullable;
 
 import static com.evolveum.midpoint.gui.impl.page.admin.simulation.page.PageSimulationResult.isCorrelationSimulation;
+import static com.evolveum.midpoint.gui.impl.page.admin.simulation.page.PageSimulationResult.isMappingSimulation;
 
 @PanelType(name = "rw-simulation-result")
 @PanelInstance(identifier = "rw-simulation-result",
@@ -56,10 +58,31 @@ public abstract class ResourceSimulationResultWizardPanel extends AbstractWizard
     }
 
     private void initLayout() {
+
+        if(isMappingSimulation(getPageBase(), simulationResultModel)) {
+            var mappingPanel = new SimulationMappingPanel(ID_PANEL, simulationResultModel){
+                @Override
+                protected void navigateToSimulationResultObject(
+                        @NotNull String simulationResultOid,
+                        @Nullable String markOid,
+                        @NotNull SimulationResultProcessedObjectType object,
+                        @NotNull AjaxRequestTarget target) {
+                    ResourceSimulationResultWizardPanel.this.navigateToSimulationResultObject(simulationResultOid, markOid, object, target);
+                }
+            };
+            mappingPanel.setOutputMarkupId(true);
+            add(mappingPanel);
+            return;
+        }
+
         if (isCorrelationSimulation(getPageBase(), simulationResultModel)) {
             var correlationPanel = new SimulationCorrelationPanel(ID_PANEL, simulationResultModel){
                 @Override
-                protected void navigateToSimulationResultObject(@NotNull String simulationResultOid, @Nullable String markOid, @NotNull SimulationResultProcessedObjectType object, @NotNull AjaxRequestTarget target) {
+                protected void navigateToSimulationResultObject(
+                        @NotNull String simulationResultOid,
+                        @Nullable String markOid,
+                        @NotNull SimulationResultProcessedObjectType object,
+                        @NotNull AjaxRequestTarget target) {
                     ResourceSimulationResultWizardPanel.this.navigateToSimulationResultObject(simulationResultOid, markOid, object, target);
                 }
             };
