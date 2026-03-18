@@ -16,6 +16,7 @@ import static com.evolveum.midpoint.gui.impl.page.admin.simulation.wizard.Resour
 import static com.evolveum.midpoint.web.session.UserProfileStorage.TableId.TABLE_SMART_CORRELATION;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.markup.html.basic.Label;
@@ -299,6 +300,11 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
                     IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+                List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
+                        .filter(ConfirmationOption::isSelected)
+                        .map(option -> option.option().toSchemaType())
+                        .collect(Collectors.toList());
+
                 ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();
                 SmartIntegrationService service = getPageBase().getSmartIntegrationService();
                 getPageBase().taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
@@ -306,7 +312,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                                 .withHideSuccess(true)
                                 .withHideInProgress(true))
                         .runVoid((task, result) -> service
-                                .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, task, result));
+                                .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, permissions, task, result));
             }
 
             @Override

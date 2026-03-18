@@ -68,6 +68,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Serial;
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationStatusInfoUtils.*;
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationUtils.*;
@@ -526,13 +527,19 @@ public abstract class SmartCorrelationTable
         getSwitchToggleModel().setObject(Boolean.TRUE);
         PageBase pageBase = getPageBase();
         ResourceObjectTypeIdentification objectTypeIdentification = getResourceObjectTypeIdentification();
+
+        List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
+                .filter(ConfirmationOption::isSelected)
+                .map(option -> option.option().toSchemaType())
+                .collect(Collectors.toList());
+
         SmartIntegrationService service = pageBase.getSmartIntegrationService();
         pageBase.taskAwareExecutor(target, OP_SUGGEST_CORRELATION_RULES)
                 .withOpResultOptions(OpResult.Options.create()
                         .withHideSuccess(true)
                         .withHideInProgress(true))
                 .runVoid((task, result) -> {
-                    service.submitSuggestCorrelationOperation(getResourceOid(), objectTypeIdentification, task, result);
+                    service.submitSuggestCorrelationOperation(getResourceOid(), objectTypeIdentification, permissions, task, result);
                     refreshAndDetach(target);
                 });
     }

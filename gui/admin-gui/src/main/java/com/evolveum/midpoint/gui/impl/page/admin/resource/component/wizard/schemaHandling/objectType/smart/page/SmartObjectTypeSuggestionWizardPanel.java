@@ -13,6 +13,7 @@ import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizar
 import static com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.schemaHandling.objectType.smart.SmartIntegrationWrapperUtils.processSuggestedContainerValue;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.xml.namespace.QName;
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -135,8 +136,14 @@ public class SmartObjectTypeSuggestionWizardPanel extends AbstractWizardPanel<Re
             target.add(getPageBase().getFeedbackPanel(), SmartObjectTypeSuggestionWizardPanel.this);
             return;
         }
+
+        List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
+                .filter(ConfirmationOption::isSelected)
+                .map(option -> option.option().toSchemaType())
+                .collect(Collectors.toList());
+
         boolean executed = runSuggestionAction(
-                getPageBase(), resourceOid, objectClassName, target, OP_DEFINE_TYPES, task);
+                getPageBase(), resourceOid, objectClassName, target, OP_DEFINE_TYPES, task, permissions);
 
         result.computeStatusIfUnknown();
 
