@@ -12,6 +12,7 @@ import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.hc.client5.http.entity.EntityBuilder;
@@ -262,6 +263,14 @@ public class RestBackend extends ConnectorDevelopmentBackend {
                     objClass.setAbstract(toBoolean(jsonClass.get("abstract")));
                     objClass.setEmbedded(toBoolean(jsonClass.get("embedded")));
                     objClass.setDescription(jsonClass.get("description").asText());
+                    var jsonChunks = jsonClass.get("relevantChunks");
+                    if (jsonChunks != null) {
+                        for (var jsonChunk : jsonChunks) {
+                            var chunk = new ConnDevRelevantChunkType();
+                            chunk.setDocUuid(jsonChunk.get("docUuid").asText());
+                            objClass.getRelevantChunk().add(chunk);
+                        }
+                    }
                     if (relevant || includeUnrelated) {
                         ret.add(objClass);
                     }
@@ -475,28 +484,25 @@ public class RestBackend extends ConnectorDevelopmentBackend {
     }
 
     static ObjectNode toJsonAttributes(List<ConnDevAttributeInfoType> attributes) {
-        var ret = JSON_FACTORY.objectNode();
         var jsonAttributes = JSON_FACTORY.objectNode();
-        ret.set("attributes", jsonAttributes);
         for (var attr : attributes) {
             var jsonAttr = JSON_FACTORY.objectNode();
             jsonAttr.set("type", JSON_FACTORY.textNode(attr.getType()));
             jsonAttr.set("format", JSON_FACTORY.textNode(attr.getFormat()));
             jsonAttr.set("mandatory", JSON_FACTORY.booleanNode(attr.isMandatory()));
             jsonAttr.set("updatable", JSON_FACTORY.booleanNode(attr.isUpdatable()));
+            jsonAttr.set("creatable", JSON_FACTORY.booleanNode(attr.isCreatable()));
             jsonAttr.set("readable", JSON_FACTORY.booleanNode(attr.isReadable()));
             jsonAttr.set("multivalue", JSON_FACTORY.booleanNode(attr.isMultivalue()));
             jsonAttr.set("returnedByDefault", JSON_FACTORY.booleanNode(attr.isReturnedByDefault()));
 
             jsonAttributes.set(attr.getName(), jsonAttr);
         }
-        return ret;
+        return jsonAttributes;
     }
 
     public static ObjectNode toJsonEndpoints(List<ConnDevHttpEndpointType> endpoints) {
-        var ret = JSON_FACTORY.objectNode();
         var jsonEndpoints = JSON_FACTORY.arrayNode();
-        ret.set("endpoints", jsonEndpoints);
         for (var endpoint : endpoints) {
             var jsonEndpoint = JSON_FACTORY.objectNode();
             jsonEndpoint.set("path", JSON_FACTORY.textNode(endpoint.getUri()));
@@ -504,8 +510,15 @@ public class RestBackend extends ConnectorDevelopmentBackend {
             jsonEndpoint.set("responseContentType", JSON_FACTORY.textNode(endpoint.getResponseContentType()));
             jsonEndpoint.set("requestContentType", JSON_FACTORY.textNode(endpoint.getRequestContentType()));
             jsonEndpoint.set("method", JSON_FACTORY.textNode(toValue(endpoint.getOperation())));
+            var suggestedUseArray = JSON_FACTORY.arrayNode();
+            for (var use : endpoint.getSuggestedUse()) {
+                suggestedUseArray.add(JSON_FACTORY.textNode(use.value()));
+            }
+            jsonEndpoint.set("suggestedUse", suggestedUseArray);
             jsonEndpoints.add(jsonEndpoint);
         }
+        var ret = JSON_FACTORY.objectNode();
+        ret.set("endpoints", jsonEndpoints);
         return ret;
     }
 
@@ -521,24 +534,32 @@ public class RestBackend extends ConnectorDevelopmentBackend {
             object.set("relevant", JSON_FACTORY.textNode(Boolean.toString(classInfo.isRelevant())));
             object.set("abstract", JSON_FACTORY.booleanNode(classInfo.isAbstract()));
             object.set("embedded", JSON_FACTORY.booleanNode(classInfo.isEmbedded()));
+            var jsonChunks = JSON_FACTORY.arrayNode();
+            for (var chunk : classInfo.getRelevantChunk()) {
+                var jsonChunk = JSON_FACTORY.objectNode();
+                jsonChunk.set("docUuid", JSON_FACTORY.textNode(chunk.getDocUuid()));
+                jsonChunks.add(jsonChunk);
+            }
+            object.set("relevantChunks", jsonChunks);
             jsonObjectClasses.add(object);
         }
         return ret;
     }
 
     private ObjectNode toJsonRelations(List<ConnDevRelationInfoType> relation) {
-        var ret = JSON_FACTORY.objectNode();
         var jsonRelations = JSON_FACTORY.arrayNode();
-        ret.set("relations", jsonRelations);
         for (var relationInfo : relation) {
             var object = JSON_FACTORY.objectNode();
             object.set("name", JSON_FACTORY.textNode(relationInfo.getName()));
+            object.set("shortDescription", JSON_FACTORY.textNode(relationInfo.getShortDescription()));
             object.set("subject", JSON_FACTORY.textNode(relationInfo.getSubject()));
             object.set("subjectAttribute",  JSON_FACTORY.textNode(relationInfo.getSubjectAttribute()));
             object.set("object",  JSON_FACTORY.textNode(relationInfo.getObject()));
             object.set("objectAttribute",  JSON_FACTORY.textNode(relationInfo.getObjectAttribute()));
             jsonRelations.add(object);
         }
+        var ret = JSON_FACTORY.objectNode();
+        ret.set("relations", jsonRelations);
         return ret;
     }
 
@@ -620,9 +641,11 @@ public class RestBackend extends ConnectorDevelopmentBackend {
     }
 
     private void restoreSession(ServiceClient.RestorationClient client) throws IOException {
-        // FIXME: Implement full session restoration here
-        // ensureDocumentationIsUploaded(client);
-
+        ensureDocumentationIsUploaded(client);
+        restoreObjectClasses(client);
+        restoreRelations(client);
+        restoreEndpoints(client);
+        restoreAttributes(client);
     }
 
     private void synchronizeSession(ServiceClient.RestorationClient client) throws IOException {
@@ -630,12 +653,82 @@ public class RestBackend extends ConnectorDevelopmentBackend {
         // ensureDocumentationIsUploaded(client);
     }
 
+    private void restoreObjectClasses(ServiceClient.RestorationClient client) throws IOException {
+        var app = developmentObject().getApplication();
+        if (app == null) return;
+        var schema = app.getDetectedSchema();
+        if (schema == null) return;
 
+        var appClasses = schema.getObjectClass();
+        if (appClasses == null || appClasses.isEmpty()) return;
+        var text = toJsonObjectClasses(appClasses).toPrettyString();
+        LOGGER.info("text: {}", text);
+
+        client.put("digester/{sessionId}/classes", () ->
+                EntityBuilder.create()
+                        .setContentType(ContentType.APPLICATION_JSON)
+                        .setText(text)
+                        .build());
+    }
+
+    private void restoreEndpoints(ServiceClient.RestorationClient client) throws IOException {
+        var app = developmentObject().getApplication();
+        if (app == null) return;
+        var schema = app.getDetectedSchema();
+        if (schema == null) return;
+
+        for (var appOc : schema.getObjectClass()) {
+            var name = appOc.getName();
+            var endpoints = appOc.getEndpoint();
+            if (endpoints == null || endpoints.isEmpty()) continue;
+
+            client.put("digester/{sessionId}/classes/" + name + "/endpoints", () ->
+                    EntityBuilder.create()
+                            .setContentType(ContentType.APPLICATION_JSON)
+                            .setText(toJsonEndpoints(endpoints).toPrettyString())
+                            .build());
+        }
+    }
+
+    private void restoreAttributes(ServiceClient.RestorationClient client) throws IOException {
+        var connector = developmentObject().getConnector();
+        if (connector == null) return;
+
+        for (var connectorOc : connector.getObjectClass()) {
+            var name = connectorOc.getName();
+            var attributes = connectorOc.getAttribute();
+            if (attributes == null || attributes.isEmpty()) continue;
+
+            client.put("digester/{sessionId}/classes/" + name + "/attributes", () ->
+                    EntityBuilder.create()
+                            .setContentType(ContentType.APPLICATION_JSON)
+                            .setText(toJsonAttributes(attributes).toPrettyString())
+                            .build());
+        }
+    }
+
+    private void restoreRelations(ServiceClient.RestorationClient client) throws IOException {
+        var app = developmentObject().getApplication();
+        if (app == null) return;
+        var schema = app.getDetectedSchema();
+        if (schema == null) return;
+
+        var relations = schema.getRelation();
+        if (relations == null || relations.isEmpty()) return;
+
+        client.put("digester/{sessionId}/relations", () ->
+                EntityBuilder.create()
+                        .setContentType(ContentType.APPLICATION_JSON)
+                        .setText(toJsonRelations(relations).toPrettyString())
+                        .build());
+    }
 
     public void ensureDocumentationIsUploaded(ServiceClient.RestorationClient client) {
+        boolean anyUploaded = false;
         for (var documentation : getProcessedDocumentation()) {
             try {
-                client.putIfMissing("session/{sessionId}/documentation/" + documentation.uuid(), () -> {
+                var jobId = client.putDocumentationIfMissing(
+                        "session/{sessionId}/documentation/" + documentation.uuid(), () -> {
                     final MultipartEntityBuilder builder = MultipartEntityBuilder.create();
                     builder.setMode(HttpMultipartMode.EXTENDED);
                     try {
@@ -647,11 +740,21 @@ public class RestBackend extends ConnectorDevelopmentBackend {
                     }
                     return builder.build();
                 });
+                if (jobId.isPresent()) {
+                    anyUploaded = true;
+                }
+                Thread.sleep(1000);
             } catch (Exception e) {
                 throw new SystemException("Couldn't upload documentation", e);
             }
         }
-
+        if (anyUploaded) {
+            try {
+                client.waitForDocumentationJobs("session/{sessionId}/documentation/status");
+            } catch (IOException e) {
+                throw new SystemException("Couldn't wait for documentation processing", e);
+            }
+        }
     }
 
     private String filenameFrom(ProcessedDocumentation documentation) {

@@ -224,14 +224,18 @@ public abstract class ConnectorDevelopmentBackend {
     }
 
     public void updateApplicationObjectClasses(List<ConnDevBasicObjectClassInfoType> discovered) throws CommonException {
-        List<ConnDevObjectClassInfoType> applicationClasses = discovered.stream().map(v -> new ConnDevObjectClassInfoType()
-                .name(v.getName())
-                .description(v.getDescription())
-                .embedded(v.getEmbedded())
-                ._abstract(v.isAbstract())
-                .superclass(v.getSuperclass())
-                .relevant(v.getRelevant())
-        ).toList();
+        List<ConnDevObjectClassInfoType> applicationClasses = discovered.stream().map(v -> {
+            var oc = new ConnDevObjectClassInfoType()
+                    .name(v.getName())
+                    .description(v.getDescription())
+                    .embedded(v.getEmbedded())
+                    ._abstract(v.isAbstract())
+                    .superclass(v.getSuperclass())
+                    .relevant(v.getRelevant());
+            v.getRelevantChunk().forEach(chunk ->
+                    oc.relevantChunk(new ConnDevRelevantChunkType().docUuid(chunk.getDocUuid())));
+            return oc;
+        }).toList();
         var delta = PrismContext.get().deltaFor(ConnectorDevelopmentType.class)
                 .item(ConnectorDevelopmentType.F_APPLICATION, ConnDevApplicationInfoType.F_DETECTED_SCHEMA, ConnDevSchemaType.F_OBJECT_CLASS).replaceRealValues(applicationClasses)
                 .<ConnectorDevelopmentType>asObjectDelta(development.getOid());
