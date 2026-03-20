@@ -8,12 +8,15 @@
 
 package com.evolveum.midpoint.smart.impl.activities.mappingSuggestion;
 
+import com.evolveum.midpoint.prism.Referencable;
 import com.evolveum.midpoint.repo.common.activity.ActivityInterruptedException;
 import com.evolveum.midpoint.repo.common.activity.run.ActivityRunException;
 import com.evolveum.midpoint.repo.common.activity.run.ActivityRunInstantiationContext;
 import com.evolveum.midpoint.repo.common.activity.run.ActivityRunResult;
 import com.evolveum.midpoint.repo.common.activity.run.LocalActivityRun;
+import com.evolveum.midpoint.repo.common.activity.run.state.ActivityState;
 import com.evolveum.midpoint.schema.result.OperationResult;
+import com.evolveum.midpoint.schema.util.ShadowObjectTypeStatisticsTypeUtil;
 import com.evolveum.midpoint.smart.impl.SmartIntegrationBeans;
 import com.evolveum.midpoint.smart.impl.activities.Util;
 import com.evolveum.midpoint.util.exception.CommonException;
@@ -53,13 +56,38 @@ public class MappingsSuggestionRemoteServiceCallActivityRun extends LocalActivit
         var isInbound = workDefinition.isInbound();
 
         boolean useAi = workDefinition.getPermissions().contains(DataAccessPermissionType.RAW_DATA_ACCESS);
+
+        var objectTypeStatistics = loadObjectTypeStatistics(parentState, result);
+
         var suggestedMappings = SmartIntegrationBeans.get().smartIntegrationService.suggestMappings(
-                resourceOid, typeDef, schemaMatch, isInbound, useAi, targetPathsToIgnore, state, task, result);
+                resourceOid, typeDef, schemaMatch, isInbound, useAi, objectTypeStatistics, targetPathsToIgnore, state, task, result);
 
         parentState.setWorkStateItemRealValues(MappingsSuggestionWorkStateType.F_RESULT, suggestedMappings);
         parentState.flushPendingTaskModifications(result);
         LOGGER.debug("Suggestions written to the work state:\n{}", suggestedMappings.debugDump(1));
 
         return ActivityRunResult.success();
+    }
+
+    private ShadowObjectClassStatisticsType loadObjectTypeStatistics(
+            ActivityState parentState, OperationResult result) {
+        try {
+            var statisticsRef = parentState.getWorkStateItemRealValueClone(
+                    MappingsSuggestionWorkStateType.F_STATISTICS_REF, ObjectReferenceType.class);
+            if (statisticsRef == null) {
+                return null;
+            }
+            var statisticsOid = Referencable.getOid(statisticsRef);
+            if (statisticsOid == null) {
+                return null;
+            }
+            var statisticsObject = SmartIntegrationBeans.get().repositoryService
+                    .getObject(GenericObjectType.class, statisticsOid, null, result)
+                    .asObjectable();
+            return ShadowObjectTypeStatisticsTypeUtil.getObjectTypeStatisticsRequired(statisticsObject);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to load object type statistics from work state, proceeding without them: {}", e.getMessage());
+            return null;
+        }
     }
 }

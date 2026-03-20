@@ -1481,6 +1481,57 @@
         </xsd:sequence>
     </xsd:complexType>
 
+    <xsd:complexType name="SiSuggestCategoricalMappingRequestType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Request for "suggestCategoricalMapping" method.
+                Used when no correlated data is available but the source attribute appears to be categorical
+                (small number of distinct values matching an MP enum attribute like activation/administrativeStatus).
+            </xsd:documentation>
+            <xsd:appinfo>
+                <a:since>4.11</a:since>
+                <!-- intentionally not a container -->
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="applicationAttribute" type="tns:SiAttributeDefinitionType">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Definition of the application-side attribute.
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="midPointAttribute" type="tns:SiAttributeDefinitionType">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Definition of the midPoint-side categorical attribute.
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="inbound" type="xsd:boolean">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Is the mapping to be produced an inbound one?
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="applicationAttributeValue" type="xsd:string" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Distinct values of the application-side attribute from statistics.
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="midPointCategoryValue" type="xsd:string" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Known enum values of the midPoint categorical attribute (e.g. "enabled", "disabled", "archived").
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
     <xsd:complexType name="SiSuggestMappingResponseType">
         <xsd:annotation>
             <xsd:documentation>
