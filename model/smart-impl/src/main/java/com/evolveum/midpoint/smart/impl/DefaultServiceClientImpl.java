@@ -48,6 +48,7 @@ public class DefaultServiceClientImpl implements ServiceClient {
     private static final String METHOD_SUGGEST_FOCUS_TYPE = "focusType/suggestFocusType";
     private static final String METHOD_MATCH_SCHEMA = "matching/matchSchema";
     private static final String METHOD_SUGGEST_MAPPING = "mapping/suggestMapping";
+    private static final String METHOD_SUGGEST_CATEGORICAL_MAPPING = "mapping/suggestCategoricalMapping";
 
     /** The client used to access the remote service. */
     private final WebClient webClient;
@@ -137,6 +138,7 @@ public class DefaultServiceClientImpl implements ServiceClient {
             case SUGGEST_FOCUS_TYPE -> URL_PREFIX + METHOD_SUGGEST_FOCUS_TYPE;
             case MATCH_SCHEMA -> URL_PREFIX + METHOD_MATCH_SCHEMA;
             case SUGGEST_MAPPING -> URL_PREFIX + METHOD_SUGGEST_MAPPING;
+            case SUGGEST_CATEGORICAL_MAPPING -> URL_PREFIX + METHOD_SUGGEST_CATEGORICAL_MAPPING;
         };
     }
 

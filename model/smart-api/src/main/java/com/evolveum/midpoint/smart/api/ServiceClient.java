@@ -30,6 +30,6 @@ public interface ServiceClient extends AutoCloseable {
     void close();
 
     enum Method {
-        SUGGEST_OBJECT_TYPES, SUGGEST_FOCUS_TYPE, MATCH_SCHEMA, SUGGEST_MAPPING;
+        SUGGEST_OBJECT_TYPES, SUGGEST_FOCUS_TYPE, MATCH_SCHEMA, SUGGEST_MAPPING, SUGGEST_CATEGORICAL_MAPPING;
     }
 }

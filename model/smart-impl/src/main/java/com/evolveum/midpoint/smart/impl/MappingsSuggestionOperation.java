@@ -7,6 +7,7 @@
 
 package com.evolveum.midpoint.smart.impl;
 
+import static com.evolveum.midpoint.smart.api.ServiceClient.Method.SUGGEST_CATEGORICAL_MAPPING;
 import static com.evolveum.midpoint.smart.api.ServiceClient.Method.SUGGEST_MAPPING;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.repo.common.activity.ActivityInterruptedException;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
+import com.evolveum.midpoint.smart.impl.mappings.CategoricalAttributeRegistry;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.SystemMappingSuggestion;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaProvider;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaService;
@@ -72,8 +74,10 @@ class MappingsSuggestionOperation {
     private final OwnedShadowsProvider ownedShadowsProvider;
     private final WellKnownSchemaService wellKnownSchemaService;
     private final HeuristicRuleMatcher heuristicRuleMatcher;
+    private final CategoricalAttributeRegistry categoricalAttributeRegistry;
     private final boolean isInbound;
     private final boolean useAiService;
+    @Nullable private final ShadowObjectClassStatisticsType objectTypeStatistics;
 
     private MappingsSuggestionOperation(
             TypeOperationContext ctx,
@@ -81,15 +85,19 @@ class MappingsSuggestionOperation {
             OwnedShadowsProvider ownedShadowsProvider,
             WellKnownSchemaService wellKnownSchemaService,
             HeuristicRuleMatcher heuristicRuleMatcher,
+            CategoricalAttributeRegistry categoricalAttributeRegistry,
             boolean isInbound,
-            boolean useAiService) {
+            boolean useAiService,
+            @Nullable ShadowObjectClassStatisticsType objectTypeStatistics) {
         this.ctx = ctx;
         this.qualityAssessor = qualityAssessor;
         this.ownedShadowsProvider = ownedShadowsProvider;
         this.wellKnownSchemaService = wellKnownSchemaService;
         this.heuristicRuleMatcher = heuristicRuleMatcher;
+        this.categoricalAttributeRegistry = categoricalAttributeRegistry;
         this.isInbound = isInbound;
         this.useAiService = useAiService;
+        this.objectTypeStatistics = objectTypeStatistics;
     }
 
     static MappingsSuggestionOperation init(
@@ -98,8 +106,10 @@ class MappingsSuggestionOperation {
             OwnedShadowsProvider ownedShadowsProvider,
             WellKnownSchemaService wellKnownSchemaService,
             HeuristicRuleMatcher heuristicRuleMatcher,
+            CategoricalAttributeRegistry categoricalAttributeRegistry,
             boolean isInbound,
-            boolean useAiService)
+            boolean useAiService,
+            @Nullable ShadowObjectClassStatisticsType objectTypeStatistics)
             throws SchemaException, ExpressionEvaluationException, SecurityViolationException, CommunicationException,
             ConfigurationException, ObjectNotFoundException {
         return new MappingsSuggestionOperation(
@@ -108,8 +118,10 @@ class MappingsSuggestionOperation {
                 ownedShadowsProvider,
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                categoricalAttributeRegistry,
                 isInbound,
-                useAiService);
+                useAiService,
+                objectTypeStatistics);
     }
 
     private MappingDirection resolveDirection() {
@@ -458,6 +470,12 @@ class MappingsSuggestionOperation {
 
         // Check if data is sufficient for evaluation
         if (valuePairsForLLM.pairs().isEmpty() || valuePairsForValidation.pairs().isEmpty()) {
+            if (useAiService && isInbound) {
+                var categoricalResult = tryCategoricalMappingSuggestion(matchPair);
+                if (categoricalResult != null) {
+                    return categoricalResult;
+                }
+            }
             LOGGER.trace("No data pairs. We'll use 'asIs' mapping (no LLM call).");
             return MappingEvaluationResult.of(null, null, isSystemProvided);
         }
@@ -486,6 +504,77 @@ class MappingsSuggestionOperation {
                 valuePairsForValidation,
                 isSystemProvided,
                 parentResult);
+    }
+
+    /**
+     * Attempts to suggest a categorical mapping when no correlated data pairs are available.
+     */
+    private @Nullable MappingEvaluationResult tryCategoricalMappingSuggestion(SchemaMatchOneResultType matchPair) {
+        if (objectTypeStatistics == null) {
+            return null;
+        }
+
+        var focusPropPath = PrismContext.get().itemPathParser().asItemPath(matchPair.getFocusPropertyPath());
+        var categoricalAttr = categoricalAttributeRegistry.find(focusPropPath);
+        if (categoricalAttr.isEmpty()) {
+            return null;
+        }
+
+        var shadowAttrPath = PrismContext.get().itemPathParser().asItemPath(matchPair.getShadowAttributePath());
+        var attrStats = findAttributeStatistics(shadowAttrPath);
+        if (attrStats == null) {
+            LOGGER.trace("No statistics found for shadow attribute {}, skipping categorical mapping.",
+                    matchPair.getShadowAttributePath());
+            return null;
+        }
+
+        int uniqueValueCount = attrStats.getUniqueValueCount();
+        int mpEnumCount = categoricalAttr.get().enumValues().size();
+        if (Math.abs(uniqueValueCount - mpEnumCount) > 2) {
+            LOGGER.trace("Cardinality mismatch: shadow attr has {} unique values, MP enum has {} (|diff|>1), skipping.",
+                    uniqueValueCount, mpEnumCount);
+            return null;
+        }
+
+        if (attrStats.getValueCount().isEmpty()) {
+            LOGGER.trace("No value distribution available for {}, skipping categorical mapping.",
+                    matchPair.getShadowAttributePath());
+            return null;
+        }
+
+        LOGGER.debug("Attempting categorical mapping suggestion for {} -> {} (uniqueValues={}, mpEnumValues={})",
+                matchPair.getShadowAttributePath(), matchPair.getFocusPropertyPath(), uniqueValueCount, mpEnumCount);
+
+        var request = new SiSuggestCategoricalMappingRequestType()
+                .applicationAttribute(matchPair.getShadowAttribute())
+                .midPointAttribute(matchPair.getFocusProperty())
+                .inbound(isInbound);
+        attrStats.getValueCount().forEach(vc -> request.getApplicationAttributeValueCount().add(vc));
+        categoricalAttr.get().enumValues().forEach(v -> request.getMidPointCategoryValue().add(v));
+
+        var response = ctx.serviceClient
+                .invokeAsync(SUGGEST_CATEGORICAL_MAPPING, request, SiSuggestMappingResponseType.class)
+                .join();
+
+        var expression = buildScriptExpression(response);
+        LOGGER.debug("Categorical mapping suggestion for {}: {}",
+                matchPair.getShadowAttributePath(), expression != null ? "script provided" : "null/as-is");
+        return MappingEvaluationResult.of(expression, null, false);
+    }
+
+    /**
+     * Finds the statistics entry for the given shadow attribute path.
+     * Matches by the local part of the last path segment to avoid namespace sensitivity.
+     */
+    private @Nullable ShadowAttributeStatisticsType findAttributeStatistics(ItemPath shadowAttrPath) {
+        var attrLocalName = shadowAttrPath.lastName().getLocalPart();
+        return objectTypeStatistics.getAttribute().stream()
+                .filter(attr -> {
+                    var refPath = attr.getRef() != null ? attr.getRef().getItemPath() : null;
+                    return refPath != null && refPath.lastName().getLocalPart().equals(attrLocalName);
+                })
+                .findFirst()
+                .orElse(null);
     }
 
     private MappingEvaluationResult findBestMappingExpression(

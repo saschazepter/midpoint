@@ -11234,6 +11234,18 @@
         <xsd:complexContent>
             <xsd:extension base="tns:AbstractActivityWorkStateType">
                 <xsd:sequence>
+                    <xsd:element name="statisticsRef" type="tns:ObjectReferenceType" minOccurs="0">
+                        <xsd:annotation>
+                            <xsd:documentation>
+                                Reference to the object type statistics object computed before the mapping suggestion.
+                                Used for categorical mapping suggestions when no correlated data is available.
+                            </xsd:documentation>
+                            <xsd:appinfo>
+                                <a:displayName>MappingsSuggestionWorkStateType.statisticsRef</a:displayName>
+                                <a:objectReferenceTargetType>c:GenericObjectType</a:objectReferenceTargetType>
+                            </xsd:appinfo>
+                        </xsd:annotation>
+                    </xsd:element>
                     <xsd:element name="schemaMatchRef" type="tns:ObjectReferenceType" minOccurs="0">
                         <xsd:annotation>
                             <xsd:documentation>

@@ -259,6 +259,7 @@ public interface SmartIntegrationService {
             SchemaMatchResultType schemaMatch,
             Boolean isInbound,
             Boolean useAiService,
+            @Nullable ShadowObjectClassStatisticsType objectTypeStatistics,
             @Nullable List<ItemPath> targetPathsToIgnore,
             @Nullable CurrentActivityState<?> activityState,
             Task task,

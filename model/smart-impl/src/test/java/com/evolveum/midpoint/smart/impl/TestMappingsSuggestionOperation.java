@@ -12,6 +12,7 @@ import com.evolveum.midpoint.schema.util.Resource;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
 import com.evolveum.midpoint.smart.api.ServiceClient;
 import com.evolveum.midpoint.smart.impl.activities.ObjectTypeStatisticsComputer;
+import com.evolveum.midpoint.smart.impl.mappings.CategoricalAttributeRegistry;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaService;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaType;
 import com.evolveum.midpoint.smart.impl.scoring.MappingsQualityAssessor;
@@ -188,8 +189,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -231,8 +234,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -273,8 +278,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -314,8 +321,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -361,8 +370,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -393,8 +404,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -440,8 +453,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -487,8 +502,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -533,8 +550,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -579,8 +598,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -608,8 +629,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -646,8 +669,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -678,8 +703,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -716,8 +743,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -759,8 +788,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -799,8 +830,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -839,8 +872,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -882,8 +917,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -928,8 +965,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -974,8 +1013,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1022,8 +1063,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1070,8 +1113,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1116,8 +1161,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1162,8 +1209,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1206,8 +1255,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1254,8 +1305,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                true);
+                true,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1296,8 +1349,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1342,8 +1397,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1388,8 +1445,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1434,8 +1493,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1480,8 +1541,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1526,8 +1589,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1572,8 +1637,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1618,8 +1685,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 true,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
@@ -1664,8 +1733,10 @@ public class TestMappingsSuggestionOperation extends AbstractSmartIntegrationTes
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
+                new CategoricalAttributeRegistry(),
                 false,
-                false);
+                false,
+                null);
 
         var match = smartIntegrationService.computeSchemaMatch(RESOURCE_DUMMY.oid, ACCOUNT_DEFAULT, true, task, result);
         MappingsSuggestionType suggestion = op.suggestMappings(result, match, null);
