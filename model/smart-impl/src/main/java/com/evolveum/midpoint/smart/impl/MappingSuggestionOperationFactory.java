@@ -10,6 +10,7 @@ import com.evolveum.midpoint.smart.api.ServiceClient;
 import com.evolveum.midpoint.smart.impl.mappings.CategoricalAttributeRegistry;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaService;
 import com.evolveum.midpoint.smart.impl.mappings.heuristics.HeuristicRuleMatcher;
+import com.evolveum.midpoint.smart.impl.scoring.MappingScriptValidator;
 import com.evolveum.midpoint.smart.impl.scoring.MappingsQualityAssessor;
 import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.util.exception.CommunicationException;
@@ -24,17 +25,20 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.ShadowObjectClassSta
 public class MappingSuggestionOperationFactory {
 
     private final MappingsQualityAssessor mappingsQualityAssessor;
+    private final MappingScriptValidator mappingScriptValidator;
     private final OwnedShadowsProvider ownedShadowsProvider;
     private final WellKnownSchemaService wellKnownSchemaService;
     private final HeuristicRuleMatcher heuristicRuleMatcher;
     private final CategoricalAttributeRegistry categoricalAttributeRegistry;
 
     public MappingSuggestionOperationFactory(MappingsQualityAssessor mappingsQualityAssessor,
+            MappingScriptValidator mappingScriptValidator,
             OwnedShadowsProvider ownedShadowsProvider,
             WellKnownSchemaService wellKnownSchemaService,
             HeuristicRuleMatcher heuristicRuleMatcher,
             CategoricalAttributeRegistry categoricalAttributeRegistry) {
         this.mappingsQualityAssessor = mappingsQualityAssessor;
+        this.mappingScriptValidator = mappingScriptValidator;
         this.ownedShadowsProvider = ownedShadowsProvider;
         this.wellKnownSchemaService = wellKnownSchemaService;
         this.heuristicRuleMatcher = heuristicRuleMatcher;
@@ -51,6 +55,7 @@ public class MappingSuggestionOperationFactory {
         return MappingsSuggestionOperation.init(
                 TypeOperationContext.init(client, resourceOid, typeIdentification, activityState, task, parentResult),
                 this.mappingsQualityAssessor,
+                this.mappingScriptValidator,
                 this.ownedShadowsProvider,
                 this.wellKnownSchemaService,
                 this.heuristicRuleMatcher,

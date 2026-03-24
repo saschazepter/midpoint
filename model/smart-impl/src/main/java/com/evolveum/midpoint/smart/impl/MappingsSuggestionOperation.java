@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.repo.common.activity.ActivityInterruptedException;
+import com.evolveum.midpoint.schema.constants.ExpressionConstants;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
 import com.evolveum.midpoint.smart.impl.mappings.CategoricalAttributeRegistry;
@@ -34,7 +35,9 @@ import com.evolveum.midpoint.smart.impl.mappings.MappingDirection;
 import com.evolveum.midpoint.smart.impl.mappings.MissingSourceDataException;
 import com.evolveum.midpoint.smart.impl.mappings.OwnedShadow;
 import com.evolveum.midpoint.smart.impl.mappings.ValuesPairSample;
+import com.evolveum.midpoint.smart.impl.scoring.MappingScriptValidator;
 import com.evolveum.midpoint.smart.impl.scoring.MappingsQualityAssessor;
+import com.evolveum.midpoint.smart.impl.scoring.ScriptValidationException;
 import com.evolveum.midpoint.util.exception.CommunicationException;
 import com.evolveum.midpoint.util.exception.ConfigurationException;
 import com.evolveum.midpoint.util.exception.ExpressionEvaluationException;
@@ -71,6 +74,7 @@ class MappingsSuggestionOperation {
     private static final String ID_MAPPINGS_SUGGESTION = "mappingsSuggestion";
     private final TypeOperationContext ctx;
     private final MappingsQualityAssessor qualityAssessor;
+    private final MappingScriptValidator scriptValidator;
     private final OwnedShadowsProvider ownedShadowsProvider;
     private final WellKnownSchemaService wellKnownSchemaService;
     private final HeuristicRuleMatcher heuristicRuleMatcher;
@@ -82,6 +86,7 @@ class MappingsSuggestionOperation {
     private MappingsSuggestionOperation(
             TypeOperationContext ctx,
             MappingsQualityAssessor qualityAssessor,
+            MappingScriptValidator scriptValidator,
             OwnedShadowsProvider ownedShadowsProvider,
             WellKnownSchemaService wellKnownSchemaService,
             HeuristicRuleMatcher heuristicRuleMatcher,
@@ -91,6 +96,7 @@ class MappingsSuggestionOperation {
             @Nullable ShadowObjectClassStatisticsType objectTypeStatistics) {
         this.ctx = ctx;
         this.qualityAssessor = qualityAssessor;
+        this.scriptValidator = scriptValidator;
         this.ownedShadowsProvider = ownedShadowsProvider;
         this.wellKnownSchemaService = wellKnownSchemaService;
         this.heuristicRuleMatcher = heuristicRuleMatcher;
@@ -103,6 +109,7 @@ class MappingsSuggestionOperation {
     static MappingsSuggestionOperation init(
             TypeOperationContext ctx,
             MappingsQualityAssessor qualityAssessor,
+            MappingScriptValidator scriptValidator,
             OwnedShadowsProvider ownedShadowsProvider,
             WellKnownSchemaService wellKnownSchemaService,
             HeuristicRuleMatcher heuristicRuleMatcher,
@@ -115,6 +122,7 @@ class MappingsSuggestionOperation {
         return new MappingsSuggestionOperation(
                 ctx,
                 qualityAssessor,
+                scriptValidator,
                 ownedShadowsProvider,
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -559,6 +567,20 @@ class MappingsSuggestionOperation {
         var expression = buildScriptExpression(response);
         LOGGER.debug("Categorical mapping suggestion for {}: {}",
                 matchPair.getShadowAttributePath(), expression != null ? "script provided" : "null/as-is");
+
+        if (expression != null) {
+            try {
+                var result = new OperationResult("validateCategoricalMappingScript");
+                String variableName = isInbound ? ExpressionConstants.VAR_INPUT : matchPair.getFocusProperty().getName();
+                String testValue = attrStats.getValueCount().isEmpty() ? null : attrStats.getValueCount().get(0).getValue();
+                scriptValidator.testMappingScript(expression, variableName, testValue, ctx.task, result);
+            } catch (ScriptValidationException e) {
+                LOGGER.warn("Categorical mapping script validation failed for {}: {}",
+                        matchPair.getShadowAttributePath(), e.getMessage());
+                return MappingEvaluationResult.of(null, null, false);
+            }
+        }
+
         return MappingEvaluationResult.of(expression, null, false);
     }
 

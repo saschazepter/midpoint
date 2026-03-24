@@ -17,6 +17,7 @@ import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.Resource;
 import com.evolveum.midpoint.schema.util.SmartMetadataUtil;
 import com.evolveum.midpoint.smart.api.ServiceClient;
+import com.evolveum.midpoint.smart.impl.scoring.MappingScriptValidator;
 import com.evolveum.midpoint.smart.impl.scoring.MappingsQualityAssessor;
 import com.evolveum.midpoint.smart.impl.mappings.CategoricalAttributeRegistry;
 import com.evolveum.midpoint.smart.impl.wellknownschemas.WellKnownSchemaService;
@@ -199,6 +200,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -257,6 +259,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -306,6 +309,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -358,6 +362,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -396,6 +401,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -489,6 +495,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -535,6 +542,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -609,6 +617,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
@@ -655,6 +664,7 @@ public class TestSystemMappingsSuggestion extends AbstractSmartIntegrationTest {
         var op = MappingsSuggestionOperation.init(
                 ctx,
                 new MappingsQualityAssessor(expressionFactory),
+                new MappingScriptValidator(expressionFactory),
                 new OwnedShadowsProviderFromResource(),
                 wellKnownSchemaService,
                 heuristicRuleMatcher,
