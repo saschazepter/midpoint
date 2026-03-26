@@ -32,6 +32,7 @@ import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.prism.query.ObjectQuery;
 import com.evolveum.midpoint.prism.xml.XmlTypeConverter;
 import com.evolveum.midpoint.repo.api.RepositoryService;
+import com.evolveum.midpoint.repo.common.SystemObjectCache;
 import com.evolveum.midpoint.repo.common.activity.ActivityInterruptedException;
 import com.evolveum.midpoint.repo.common.activity.run.state.CurrentActivityState;
 import com.evolveum.midpoint.schema.GetOperationOptions;
@@ -112,13 +113,15 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
     private final ObjectTypesSuggestionOperationFactory objectTypesSuggestionOperationFactory;
     private final StatisticsService statisticsService;
     private final SchemaMatchService schemaMatchService;
+    private final SystemObjectCache systemObjectCache;
 
     public SmartIntegrationServiceImpl(ModelService modelService,
             TaskService taskService, ModelInteractionServiceImpl modelInteractionService, TaskManager taskManager,
             @Qualifier("cacheRepositoryService") RepositoryService repositoryService,
             ServiceClientFactory clientFactory, MappingSuggestionOperationFactory mappingSuggestionOperationFactory,
             ObjectTypesSuggestionOperationFactory objectTypesSuggestionOperationFactory,
-            StatisticsService statisticsService, SchemaMatchService schemaMatchService) {
+            StatisticsService statisticsService, SchemaMatchService schemaMatchService,
+            SystemObjectCache systemObjectCache) {
         this.modelService = modelService;
         this.taskService = taskService;
         this.modelInteractionService = modelInteractionService;
@@ -129,6 +132,7 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
         this.objectTypesSuggestionOperationFactory = objectTypesSuggestionOperationFactory;
         this.statisticsService = statisticsService;
         this.schemaMatchService = schemaMatchService;
+        this.systemObjectCache = systemObjectCache;
     }
 
     @Override
@@ -661,8 +665,9 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
                 .addArbitraryObjectAsParam("typeIdentification", typeIdentification)
                 .build();
         try (var serviceClient = this.clientFactory.getServiceClient(result)) {
+            int retryCount = getConfiguredRetryCount(result);
             var mappings = this.mappingSuggestionOperationFactory.create(serviceClient, resourceOid,
-                    typeIdentification, activityState, isInbound, useAiService, objectTypeStatistics, task, result)
+                    typeIdentification, activityState, isInbound, useAiService, objectTypeStatistics, retryCount, task, result)
                     .suggestMappings(result, schemaMatch, targetPathsToIgnore);
             LOGGER.debug("Suggested mappings:\n{}", mappings.debugDumpLazily(1));
             return mappings;
@@ -672,6 +677,26 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
         } finally {
             result.close();
         }
+    }
+
+    /**
+     * Retrieves the configured retry count for AI mapping suggestions from system configuration.
+     * Falls back to default of 0 (no retry) if not configured.
+     */
+    private int getConfiguredRetryCount(OperationResult result) {
+        try {
+            SystemConfigurationType systemConfig = systemObjectCache.getSystemConfigurationBean(result);
+            if (systemConfig != null && systemConfig.getInternals() != null) {
+                Integer configuredRetryCount = systemConfig.getInternals().getSmartIntegrationMappingSuggestionRetryCount();
+                if (configuredRetryCount != null && configuredRetryCount >= 0) {
+                    LOGGER.debug("Using configured retry count for mapping suggestions: {}", configuredRetryCount);
+                    return configuredRetryCount;
+                }
+            }
+        } catch (SchemaException e) {
+            LOGGER.warn("Failed to retrieve configured retry count, using default: {}", e.getMessage());
+        }
+        return 0;
     }
 
     @Override

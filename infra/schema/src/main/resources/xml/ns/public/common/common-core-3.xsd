@@ -13877,6 +13877,18 @@
                     </xsd:appinfo>
                 </xsd:annotation>
             </xsd:element>
+            <xsd:element name="smartIntegrationMappingSuggestionRetryCount" type="xsd:int" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Number of retry attempts for AI mapping suggestion when validation fails.
+                        Default is 0 (no retry). Set to 1 or higher to enable retry mechanism.
+                    </xsd:documentation>
+                    <xsd:appinfo>
+                        <a:since>4.11</a:since>
+                        <a:displayName>InternalsConfigurationType.smartIntegrationMappingSuggestionRetryCount</a:displayName>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
         </xsd:sequence>
         <xsd:attribute name="id" type="xsd:long"/>
     </xsd:complexType>

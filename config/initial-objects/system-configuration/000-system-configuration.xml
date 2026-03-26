@@ -180,6 +180,8 @@
         <operationExecutionRecording>
             <skipWhenSuccess>true</skipWhenSuccess>
         </operationExecutionRecording>
+        <smartIntegrationMappingSuggestionRetryCount>0</smartIntegrationMappingSuggestionRetryCount>
+        <smartIntegrationStatisticsTtl>P1D</smartIntegrationStatisticsTtl>
     </internals>
     <adminGuiConfiguration>
         <homePage id="21">
