@@ -347,9 +347,16 @@ public class SmartIntegrationServiceImpl implements SmartIntegrationService {
         return statisticsService.regenerateFocusObjectStatistics(objectTypeName, resourceOid, kind, intent, task, result);
     }
 
-    public GenericObjectType getLatestObjectTypeSchemaMatch(String resourceOid, String kind, String intent, Task task, OperationResult parentResult)
+    @Override
+    public GenericObjectType getLatestObjectTypeSchemaMatch(String resourceOid, String kind, String intent, OperationResult parentResult)
             throws SchemaException {
-        return schemaMatchService.getLatestObjectTypeSchemaMatch(resourceOid, kind, intent, task, parentResult);
+        return schemaMatchService.getLatestObjectTypeSchemaMatch(resourceOid, kind, intent, parentResult);
+    }
+
+    @Override
+    public String saveSchemaMatch(String resourceOid, String kind, String intent,
+            SchemaMatchResultType schemaMatch, OperationResult result) throws SchemaException, ObjectAlreadyExistsException {
+        return schemaMatchService.saveSchemaMatch(resourceOid, kind, intent, schemaMatch, result);
     }
 
     @Override

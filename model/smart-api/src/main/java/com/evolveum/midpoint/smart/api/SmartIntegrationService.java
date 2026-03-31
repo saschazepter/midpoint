@@ -122,9 +122,20 @@ public interface SmartIntegrationService {
             throws CommonException;
 
     /** Returns the object holding last known schema match for the given resource, kind and intent. */
-    public GenericObjectType getLatestObjectTypeSchemaMatch(
-            String resourceOid, String kind, String intent, Task task, OperationResult parentResult)
+    GenericObjectType getLatestObjectTypeSchemaMatch(
+            String resourceOid, String kind, String intent, OperationResult parentResult)
             throws SchemaException;
+
+    /**
+     * Saves schema match result as a generic object with a configurable TTL (defaults to 24h).
+     * Deletes any existing schema match objects for the same resource/kind/intent before saving.
+     *
+     * @return OID of the newly created schema match object
+     */
+    String saveSchemaMatch(
+            String resourceOid, String kind, String intent,
+            SchemaMatchResultType schemaMatch, OperationResult result)
+            throws SchemaException, ObjectAlreadyExistsException;
 
     /** Computes schema match pairs for the given resource and object type. */
     SchemaMatchResultType computeSchemaMatch(

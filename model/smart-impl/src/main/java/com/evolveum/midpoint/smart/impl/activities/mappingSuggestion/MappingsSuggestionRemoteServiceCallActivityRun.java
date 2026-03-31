@@ -51,13 +51,10 @@ public class MappingsSuggestionRemoteServiceCallActivityRun extends LocalActivit
         LOGGER.debug("Going to suggest mappings for resource {}, kind {} and intent {}",
                 resourceOid, typeDef.getKind(), typeDef.getIntent());
 
-        var schemaMatch = parentState.getWorkStateItemRealValueClone(
-                MappingsSuggestionWorkStateType.F_SCHEMA_MATCH, SchemaMatchResultType.class);
         var isInbound = workDefinition.isInbound();
-
         boolean useAi = workDefinition.getPermissions().contains(DataAccessPermissionType.RAW_DATA_ACCESS);
-
         var objectTypeStatistics = loadObjectTypeStatistics(parentState, result);
+        var schemaMatch = loadSchemaMatch(parentState, result);
 
         var suggestedMappings = SmartIntegrationBeans.get().smartIntegrationService.suggestMappings(
                 resourceOid, typeDef, schemaMatch, isInbound, useAi, objectTypeStatistics, targetPathsToIgnore, state, task, result);
@@ -67,6 +64,28 @@ public class MappingsSuggestionRemoteServiceCallActivityRun extends LocalActivit
         LOGGER.debug("Suggestions written to the work state:\n{}", suggestedMappings.debugDump(1));
 
         return ActivityRunResult.success();
+    }
+
+    private SchemaMatchResultType loadSchemaMatch(
+            ActivityState parentState, OperationResult result) {
+        try {
+            var schemaMatchRef = parentState.getWorkStateItemRealValueClone(
+                    MappingsSuggestionWorkStateType.F_SCHEMA_MATCH_REF, ObjectReferenceType.class);
+            if (schemaMatchRef == null) {
+                return null;
+            }
+            var schemaMatchOid = Referencable.getOid(schemaMatchRef);
+            if (schemaMatchOid == null) {
+                return null;
+            }
+            var schemaMatchObject = SmartIntegrationBeans.get().repositoryService
+                    .getObject(GenericObjectType.class, schemaMatchOid, null, result)
+                    .asObjectable();
+            return ShadowObjectTypeUtil.getObjectTypeSchemaMatchRequired(schemaMatchObject);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to load schema match from work state, proceeding without it: {}", e.getMessage());
+            return null;
+        }
     }
 
     private ShadowObjectClassStatisticsType loadObjectTypeStatistics(
