@@ -131,7 +131,8 @@ public abstract class SchemaHandlingObjectsPanel<C extends Containerable> extend
                 () -> new SmartGeneratingAlertDto(null, Model.of(), getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions,
+                    boolean forceRecomputeSchemaMatch) {
                 // We override the generate button, so this method should not be called at all.
             }
 

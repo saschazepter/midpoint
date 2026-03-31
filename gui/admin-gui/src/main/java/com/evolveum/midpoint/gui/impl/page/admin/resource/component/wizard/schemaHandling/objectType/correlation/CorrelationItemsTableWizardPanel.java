@@ -312,7 +312,8 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                 () -> new SmartGeneratingAlertDto(loadExistingSuggestion(), switchToggleModel, getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions,
+                    boolean forceRecomputeSchemaMatch) {
                 final List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
                         .map(ConfirmationOption::option)
                         .map(DataAccessPermission::toSchemaType)
@@ -325,7 +326,7 @@ public abstract class CorrelationItemsTableWizardPanel extends AbstractResourceW
                                 .withHideInProgress(true))
                         .runVoid((task, result) -> service
                                 .submitSuggestCorrelationOperation(resourceOid, objectTypeIdentification, permissions,
-                                        task, result));
+                                        forceRecomputeSchemaMatch, task, result));
             }
 
             @Override

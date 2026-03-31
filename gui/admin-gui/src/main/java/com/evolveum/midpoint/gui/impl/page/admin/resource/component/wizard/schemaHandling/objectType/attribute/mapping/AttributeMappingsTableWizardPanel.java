@@ -263,7 +263,7 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
                                 ConfirmationOption.mappingPermissionsOptions(),
                                 () -> new ButtonWithConfirmationOptionsDialog.ButtonHandlers<>(target -> {},
                                         (target, confirmedOptions) -> {
-                                            performSuggestOperation(target, confirmedOptions);
+                                            performSuggestOperation(target, confirmedOptions, false);
                                             refreshAfterSuggestionOperationSubmitted(target);
                                         }),
                                 getPageBase());
@@ -395,8 +395,9 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
                 () -> new SmartGeneratingAlertDto(loadSuggestion(resourceOid), getSwitchToggleModel(), getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
-                AttributeMappingsTableWizardPanel.this.performSuggestOperation(target, confirmedOptions);
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions,
+                    boolean forceRecomputeSchemaMatch) {
+                AttributeMappingsTableWizardPanel.this.performSuggestOperation(target, confirmedOptions, forceRecomputeSchemaMatch);
                 refreshAfterSuggestionOperationSubmitted(target);
             }
 
@@ -426,7 +427,8 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
     }
 
     private void performSuggestOperation(AjaxRequestTarget target,
-            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions,
+            boolean forceRecomputeSchemaMatch) {
         final List<DataAccessPermissionType> permissions = confirmedOptions.getObject().stream()
                 .map(ConfirmationOption::option)
                 .map(DataAccessPermission::toSchemaType)
@@ -451,6 +453,7 @@ public abstract class AttributeMappingsTableWizardPanel<P extends Containerable>
                             inbound,
                             getTargetPathsToIgnore(),
                             permissions,
+                            forceRecomputeSchemaMatch,
                             task,
                             result);
                 });

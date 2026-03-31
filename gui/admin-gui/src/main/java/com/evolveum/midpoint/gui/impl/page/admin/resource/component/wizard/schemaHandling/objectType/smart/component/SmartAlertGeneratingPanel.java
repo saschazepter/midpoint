@@ -221,7 +221,7 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
 
     private void generatePerformed(AjaxRequestTarget target,
             IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
-        performSuggestOperation(target, confirmedOptions);
+        performSuggestOperation(target, confirmedOptions, false);
         target.add(this);
         onRefresh(target);
         restartTimeBehavior(target);
@@ -307,12 +307,13 @@ public abstract class SmartAlertGeneratingPanel extends BasePanel<SmartGeneratin
     protected void performRegenerateOperation(AjaxRequestTarget target,
             IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
         getModelObject().removeExistingSuggestionTask(getPageBase());
-        performSuggestOperation(target, confirmedOptions);
+        performSuggestOperation(target, confirmedOptions, true);
     }
 
     /** Must be implemented to trigger suggestion generation. */
     protected abstract void performSuggestOperation(AjaxRequestTarget target,
-            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions);
+            IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions,
+            boolean forceRecomputeSchemaMatch);
 
     /** Must be implemented to refresh UI components related to suggestions. */
     protected abstract void onRefresh(AjaxRequestTarget target);

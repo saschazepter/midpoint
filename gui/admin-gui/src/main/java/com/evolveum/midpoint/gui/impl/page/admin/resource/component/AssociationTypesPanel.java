@@ -388,7 +388,8 @@ public class AssociationTypesPanel extends SchemaHandlingObjectsPanel<ShadowAsso
                 () -> new SmartGeneratingAlertDto(loadSuggestion(getResourceOid()), switchToggleModel, getPageBase())) {
             @Override
             protected void performSuggestOperation(AjaxRequestTarget target,
-                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions) {
+                    IModel<List<ConfirmationOption<DataAccessPermission>>> confirmedOptions,
+                    boolean forceRecomputeSchemaMatch) {
                 onSuggestValue(createContainerModel(), target);
             }
 
