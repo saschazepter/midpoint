@@ -80,6 +80,19 @@ class IterationHelper<AH extends AssignmentHolderType> {
     private boolean wasResetIterationCounter;
 
     /**
+     * Iteration start value (defaults to 0).
+     */
+    private int iterationStart;
+
+    /**
+     * True if the {@link #iteration} field reflects a value that was already computed/persisted before
+     * (either remembered from a previous recompute of this context, or from the current object in repository).
+     * If false, the {@link #iteration} is just its Java default (0) and has to be initialized to
+     * {@link #iterationStart} once the iteration specification is known.
+     */
+    private boolean iterationKnown;
+
+    /**
      * Upper iterations limit.
      */
     private int maxIterations;
@@ -113,13 +126,18 @@ class IterationHelper<AH extends AssignmentHolderType> {
         this.focusContext = focusContext;
         iteration = focusContext.getIteration();
         iterationToken = focusContext.getIterationToken();
+        iterationKnown = iterationToken != null;
         PrismObject<AH> focusCurrent = focusContext.getObjectCurrent();
         if (focusCurrent != null && iterationToken == null) {
             Integer focusIteration = focusCurrent.asObjectable().getIteration();
             if (focusIteration != null) {
                 iteration = focusIteration;
+                iterationKnown = true;
             }
             iterationToken = focusCurrent.asObjectable().getIterationToken();
+            if (iterationToken != null) {
+                iterationKnown = true;
+            }
         }
         initialElementState = focusContext.rememberElementState();
     }
@@ -159,9 +177,14 @@ class IterationHelper<AH extends AssignmentHolderType> {
         if (!iterationSpecificationInitialized) {
             ObjectTemplateType objectTemplate = context.getFocusTemplate();
             iterationSpecification = LensUtil.getIterationSpecification(objectTemplate);
+            iterationStart = LensUtil.determineIterationStart(iterationSpecification);
             maxIterations = LensUtil.determineMaxIterations(iterationSpecification);
-            LOGGER.trace("maxIterations = {}, iteration specification = {} derived from template {}", maxIterations,
-                    iterationSpecification, objectTemplate);
+            if (!iterationKnown) {
+                iteration = iterationStart;
+                iterationKnown = true;
+            }
+            LOGGER.trace("iterationStart = {}, maxIterations = {}, iteration specification = {} derived from template {}",
+                    iterationStart, maxIterations, iterationSpecification, objectTemplate);
             iterationSpecificationInitialized = true;
         }
     }
@@ -189,7 +212,7 @@ class IterationHelper<AH extends AssignmentHolderType> {
     }
 
     private void resetOnIterationSpecificationChange() {
-        iteration = 0;
+        iteration = iterationStart;
         iterationToken = null;
         wasResetOnIterationSpecificationChange = true;
         wasResetIterationCounter = false;
@@ -198,14 +221,14 @@ class IterationHelper<AH extends AssignmentHolderType> {
     }
 
     private void resetOnRename() {
-        iteration = 0;
+        iteration = iterationStart;
         iterationToken = null;
         wasResetIterationCounter = true;
         LOGGER.trace("Resetting iteration counter and token because rename was detected");
     }
 
     private void resetOnConflict() {
-        iteration = 0;
+        iteration = iterationStart;
         iterationToken = null;
         wasResetIterationCounter = true;
         LOGGER.trace("Resetting iteration counter and token after conflict");
@@ -293,7 +316,7 @@ class IterationHelper<AH extends AssignmentHolderType> {
     }
 
     boolean didResetOnRenameOccur() {
-        if (iteration != 0 && RESET_ON_RENAME && !wasResetIterationCounter && willResetIterationCounter()) {
+        if (iteration != iterationStart && RESET_ON_RENAME && !wasResetIterationCounter && willResetIterationCounter()) {
             // Make sure this happens only the very first time during the first recompute.
             // Otherwise it will always change the token (especially if the token expression has a random part)
             // hence the focusContext.getIterationToken() == null
@@ -331,7 +354,7 @@ class IterationHelper<AH extends AssignmentHolderType> {
     }
 
     boolean shouldResetOnConflict() {
-        if (!wasResetIterationCounter && iteration != 0) {
+        if (!wasResetIterationCounter && iteration != iterationStart) {
             resetOnConflict();
             return true;
         } else {
