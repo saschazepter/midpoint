@@ -16,10 +16,12 @@ import com.evolveum.midpoint.gui.api.util.WebPrismUtil;
 import com.evolveum.midpoint.gui.impl.page.admin.assignmentholder.AssignmentHolderDetailsModel;
 import com.evolveum.midpoint.gui.impl.page.admin.resource.component.wizard.basic.ObjectClassWrapper;
 import com.evolveum.midpoint.prism.*;
+import com.evolveum.midpoint.prism.delta.ContainerDelta;
 import com.evolveum.midpoint.prism.delta.ObjectDelta;
 import com.evolveum.midpoint.prism.path.ItemName;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.ObjectDeltaOperation;
+import com.evolveum.midpoint.schema.constants.ExpressionConstants;
 import com.evolveum.midpoint.schema.SearchResultList;
 import com.evolveum.midpoint.schema.processor.*;
 import com.evolveum.midpoint.schema.result.OperationResult;
@@ -252,6 +254,125 @@ public class ResourceDetailsModel extends AssignmentHolderDetailsModel<ResourceT
             return null;
         }
         return schema.findObjectClassDefinition(objectClass);
+    }
+
+    @Override
+    protected void prepareObjectForAdd(PrismObject<ResourceType> objectToAdd) throws CommonException {
+        super.prepareObjectForAdd(objectToAdd);
+        ensureDefaultIterationSpecification(objectToAdd);
+    }
+
+    @Override
+    protected void prepareObjectDeltaForModify(ObjectDelta<ResourceType> modifyDelta) throws CommonException {
+        super.prepareObjectDeltaForModify(modifyDelta);
+        if (modifyDelta == null || !modifyDelta.isModify()) {
+            return;
+        }
+
+        PrismObject<ResourceType> resource = getObjectWrapper().getObject();
+        if (resource == null) {
+            return;
+        }
+
+        PrismContainer<ResourceObjectTypeDefinitionType> objectTypesContainer = resource.findContainer(
+                ItemPath.create(ResourceType.F_SCHEMA_HANDLING, SchemaHandlingType.F_OBJECT_TYPE));
+        if (objectTypesContainer == null) {
+            return;
+        }
+
+        for (PrismContainerValue<ResourceObjectTypeDefinitionType> objectTypeValue : objectTypesContainer.getValues()) {
+            ResourceObjectTypeDefinitionType objectType = objectTypeValue.asContainerable();
+            if (objectType.getIteration() != null) {
+                continue;
+            }
+            if (!doesObjectTypeUseIterationToken(objectType)) {
+                continue;
+            }
+
+            PrismContainerValue<IterationSpecificationType> iterationValue = createIterationSpecificationValue(objectTypeValue);
+            ContainerDelta<IterationSpecificationType> iterationDelta = getPrismContext().deltaFactory().container()
+                    .createModificationReplace(
+                            ItemPath.create(ResourceType.F_SCHEMA_HANDLING, SchemaHandlingType.F_OBJECT_TYPE,
+                                    objectTypeValue.getId(), ResourceObjectTypeDefinitionType.F_ITERATION),
+                            ResourceType.class, iterationValue);
+            modifyDelta.addModification(iterationDelta);
+        }
+    }
+
+    private void ensureDefaultIterationSpecification(PrismObject<ResourceType> resource) throws SchemaException {
+        PrismContainer<ResourceObjectTypeDefinitionType> objectTypesContainer = resource.findContainer(
+                ItemPath.create(ResourceType.F_SCHEMA_HANDLING, SchemaHandlingType.F_OBJECT_TYPE));
+        if (objectTypesContainer == null) {
+            return;
+        }
+
+        for (PrismContainerValue<ResourceObjectTypeDefinitionType> objectTypeValue : objectTypesContainer.getValues()) {
+            ResourceObjectTypeDefinitionType objectType = objectTypeValue.asContainerable();
+            if (objectType.getIteration() != null) {
+                continue;
+            }
+            if (!doesObjectTypeUseIterationToken(objectType)) {
+                continue;
+            }
+            addIterationSpecificationToObjectTypeValue(objectTypeValue);
+        }
+    }
+
+    private void addIterationSpecificationToObjectTypeValue(PrismContainerValue<ResourceObjectTypeDefinitionType> objectTypeValue) throws SchemaException {
+        PrismContainer<IterationSpecificationType> iterationContainer = objectTypeValue.findOrCreateContainer(ResourceObjectTypeDefinitionType.F_ITERATION);
+        if (!iterationContainer.hasNoValues()) {
+            return;
+        }
+        PrismContainerValue<IterationSpecificationType> iterationValue = iterationContainer.createNewValue();
+        iterationValue.setPropertyRealValue(IterationSpecificationType.F_START, 1);
+        iterationValue.setPropertyRealValue(IterationSpecificationType.F_END, 10);
+    }
+
+    private PrismContainerValue<IterationSpecificationType> createIterationSpecificationValue(
+            PrismContainerValue<ResourceObjectTypeDefinitionType> objectTypeValue) throws SchemaException {
+        PrismContainerDefinition<IterationSpecificationType> definition =
+                objectTypeValue.getContainer().getDefinition().findContainerDefinition(ResourceObjectTypeDefinitionType.F_ITERATION);
+        PrismContainerValue<IterationSpecificationType> value = definition.createValue();
+        value.setPropertyRealValue(IterationSpecificationType.F_START, 1);
+        value.setPropertyRealValue(IterationSpecificationType.F_END, 10);
+        return value;
+    }
+
+    private boolean doesObjectTypeUseIterationToken(ResourceObjectTypeDefinitionType objectType) {
+        if (objectType == null) {
+            return false;
+        }
+        if (objectType.getAttribute() != null) {
+            for (ResourceAttributeDefinitionType attribute : objectType.getAttribute()) {
+                if (doesMappingUseIterationToken(attribute.getOutbound())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean doesMappingUseIterationToken(MappingType mapping) {
+        if (mapping == null) {
+            return false;
+        }
+        ExpressionType expression = mapping.getExpression();
+        if (expression == null) {
+            return false;
+        }
+        var evaluators = expression.getExpressionEvaluator();
+        if (evaluators == null) {
+            return false;
+        }
+        for (var evaluator : evaluators) {
+            if (evaluator.getValue() instanceof ScriptExpressionEvaluatorType scriptEval) {
+                String code = scriptEval.getCode();
+                if (code != null && code.contains(ExpressionConstants.VAR_ITERATION_TOKEN)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
