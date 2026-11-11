@@ -21930,6 +21930,84 @@
                     </xsd:appinfo>
                 </xsd:annotation>
             </xsd:element>
+            <xsd:element name="rest" type="tns:RestConfigurationType" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Configuration of the REST interfaces of midPoint.
+                    </xsd:documentation>
+                    <xsd:appinfo>
+                        <a:since>4.12</a:since>
+                        <a:displayName>InfrastructureConfigurationType.rest</a:displayName>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="xsd:long"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="RestConfigurationType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Configuration of the REST interfaces of midPoint.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <a:since>4.12</a:since>
+                <a:container/>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="api" type="tns:RestApiConfigurationType" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        Configuration of the REST API, i.e. the endpoints under /rest and /api prefixes (also /ws?),
+                        except for the intra-cluster endpoints (/ws/cluster).
+                    </xsd:documentation>
+                    <xsd:appinfo>
+                        <a:since>4.12</a:since>
+                        <a:displayName>RestConfigurationType.api</a:displayName>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="xsd:long"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="RestApiConfigurationType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Configuration of the REST API.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <a:since>4.12</a:since>
+                <a:container/>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="enabled" type="xsd:boolean" minOccurs="0" default="false">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        <p>
+                            Whether the REST API is enabled.
+                            The REST API is disabled by default (since 4.12).
+                            When it is disabled, requests to the REST API endpoints end with HTTP 404 (Not Found)
+                            before any authentication takes place.
+                        </p>
+                        <p>
+                            This setting is effective only if the REST API is not enabled or disabled
+                            by the startup option midpoint.rest.api.enabled (e.g. -Dmidpoint.rest.api.enabled=true
+                            or the &lt;rest&gt;&lt;api&gt;&lt;enabled&gt; element in config.xml).
+                            The startup option, if set, always wins.
+                        </p>
+                        <p>
+                            Changes of this setting are applied without restart.
+                        </p>
+                    </xsd:documentation>
+                    <xsd:appinfo>
+                        <a:since>4.12</a:since>
+                        <a:displayName>RestApiConfigurationType.enabled</a:displayName>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
         </xsd:sequence>
         <xsd:attribute name="id" type="xsd:long"/>
     </xsd:complexType>
